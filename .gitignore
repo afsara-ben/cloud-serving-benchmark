@@ -1,0 +1,8 @@
+vendor/llama.cpp/
+models/*.gguf
+logs/*.log
+.run/
+results/*/
+results/*.json
+__pycache__/
+*.pyc

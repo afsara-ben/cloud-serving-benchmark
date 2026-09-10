@@ -1,0 +1,16 @@
+Explain how continuous batching changes GPU utilization for an inference service.
+Summarize the operational tradeoffs between request latency and aggregate throughput.
+Describe how a cloud operator should investigate an underutilized accelerator.
+Explain why lower model bit width does not always produce lower inference latency.
+Discuss how prompt processing differs from autoregressive token generation.
+Describe the relationship between memory coalescing and useful GPU throughput.
+Explain how request concurrency affects time to first token in an inference server.
+Summarize why a fixed benchmark trace improves comparisons between model variants.
+Describe how matrix-engine utilization can be limited by quantization kernels.
+Explain why median and tail latency should both be reported for cloud services.
+Discuss how prompt caching can confound a controlled inference benchmark.
+Describe how a server can be bandwidth-limited without reaching peak HBM bandwidth.
+Explain why an internal token batch is different from a batch of user requests.
+Summarize the measurements needed to characterize an LLM serving deployment.
+Describe why a single-GPU cloud experiment can still provide useful systems results.
+Explain how decoding performance changes as the number of active sequences increases.
