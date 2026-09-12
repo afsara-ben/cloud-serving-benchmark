@@ -5,6 +5,8 @@ request-level serving experiment. It starts an OpenAI-compatible `llama-server`
 with continuous batching and sends real concurrent streaming requests. The same
 project supports both NVIDIA CUDA and AMD ROCm GPUs.
 
+The motivating poster is included at [paper/Tapia.pdf](paper/Tapia.pdf).
+
 The starter configuration uses Llama 3.2 1B Instruct Q4_K_M on one GPU:
 
 - one fixed workload: approximately 2,048 prompt tokens and 128 output tokens;
