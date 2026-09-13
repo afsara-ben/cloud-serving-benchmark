@@ -10,10 +10,19 @@ Read [FINDINGS.md](FINDINGS.md) for findings and [README_LOG.md](README_LOG.md) 
 experiment history and resumption instructions. Supporting source and profiler
 details are consolidated in [references/notes.md](references/notes.md).
 
+The three-page 70B paper is available as [PDF](paper/llama70b.pdf) and
+[editable Markdown](paper/llama70b.md), with separate Runtime Cost and Runtime
+Bottlenecks sections, two figures, and two tables. [Build instructions](paper/README.md).
+The [Runtime Cost poster figures](paper/poster/README.md) provide four-panel and
+two-line layouts with editable exports; the optional 64K extrapolation is labeled
+separately from the measured figures.
+
 For TTFT, TPOT, generated tokens/s and GPU memory on **one or two A100s**, use
 [the A100 serving launcher](A100_SERVING.md). It supports individual settings or
-serial 1B/8B/70B runs at 8/64 clients and 2k/4k/8k/16k inputs, with one measured
+serial 1B/8B/70B runs at 8/16/32/64 clients and 2k/4k/8k/16k inputs, with one measured
 run, no profiling, no long-context extensions, and no 70B FP16.
+For the full Nsight section suite and optional precision-specific rooflines,
+use [one-setting A100 profiling](A100_PROFILING.md) after the serving measurement.
 
 ## Context and concurrency study
 

@@ -12,7 +12,7 @@ import report_context_study as context
 MODELS = ("1b", "8b", "70b")
 FORMATS = {model: ("IQ1_M", "Q2_K", "Q4_K_M", "Q8_0") + (() if model == "70b" else ("FP16",))
            for model in MODELS}
-CONCURRENCIES = (8, 64)
+CONCURRENCIES = (8, 16, 32, 64)
 PROMPTS = (2048, 4096, 8192, 16384)
 
 
@@ -49,7 +49,7 @@ def plot_metrics(rows, output, devices):
                 ("ttft", "ttft_p95_ms", "TTFT p95 (ms)"),
                 ("tpot", "tpot_p95_ms", "TPOT p95 (ms)"),
                 ("memory", None, "Peak sampled GPU memory (GiB)")):
-            figure, axes = plt.subplots(1, 2, figsize=(11, 4), layout="constrained", squeeze=False)
+            figure, axes = plt.subplots(2, 2, figsize=(11, 8), layout="constrained", squeeze=False)
             for axis, concurrency in zip(axes.flat, CONCURRENCIES):
                 for index, quant in enumerate(FORMATS[model]):
                     lookup = {row["input_tokens"]: row for row in model_rows
@@ -140,7 +140,7 @@ def build_report(study_root, plots=True):
              "status": "incomplete" if unresolved else "complete", "scope": scope,
              "required_cells": len(capacity), "measured_cells": len(runtime), "capacity_exclusions": excluded,
              "unresolved_cells": unresolved, "plots": artifacts,
-             "completion_definition": "All 112 serving cells measured or capacity-excluded; profiling is outside this scope."}
+             "completion_definition": f"All {len(capacity)} serving cells measured or capacity-excluded; profiling is outside this scope."}
     context.write_json(output / "completion-audit.json", audit)
     lines = ["# A100 serving metrics", "", f"Status: **{audit['status']}**. {len(runtime)}/{len(capacity)} settings measured; "
              f"{excluded} capacity-excluded; {len(unresolved)} unresolved.", "",

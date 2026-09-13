@@ -31,6 +31,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "benchmark"))
 import report_serving as report
 
+DEFAULT_CONCURRENCIES = ",".join(map(str, report.CONCURRENCIES))
+
 
 def selection(args):
     def values(text, allowed, label, convert=str):
@@ -135,7 +137,7 @@ def initialize_series(root, devices):
 
 def study_command(action, model, cells):
     command = ["bash", "execute.sh", action, "cuda", model, "--manifest", str(manifest_path(model)),
-               "--formats", ",".join(report.FORMATS[model]), "--concurrencies", "8,64",
+               "--formats", ",".join(report.FORMATS[model]), "--concurrencies", DEFAULT_CONCURRENCIES,
                "--prompt-lengths", "2048,4096,8192,16384", "--capacity-lengths", "", "--repetitions", "1"]
     for cell in cells:
         command.extend(("--only-cell", cell))
@@ -149,7 +151,8 @@ def main():
     parser.add_argument("--study-name", help="Fresh results series; default: cuda-context-study-a100-1gpu or -2gpu")
     parser.add_argument("--models", nargs="+", choices=report.MODELS, default=list(report.MODELS))
     parser.add_argument("--formats", help="Comma-separated IQ1_M,Q2_K,Q4_K_M,Q8_0,FP16; default: all applicable formats")
-    parser.add_argument("--concurrencies", default="8,64", help="Comma-separated selection of 8,64")
+    parser.add_argument("--concurrencies", default=DEFAULT_CONCURRENCIES,
+                        help=f"Comma-separated selection of {DEFAULT_CONCURRENCIES}")
     parser.add_argument("--prompt-lengths", default="2048,4096,8192,16384", help="Comma-separated input-token selection")
     parser.add_argument("--no-plots", action="store_true", help="Generate CSV/Markdown only")
     args = parser.parse_args()
@@ -177,7 +180,7 @@ def main():
         run_command(["bash", "scripts/01_build_llama_cpp.sh"], environment)
         return
     if args.action == "prepare":
-        if args.formats or args.concurrencies != "8,64" or args.prompt_lengths != "2048,4096,8192,16384":
+        if args.formats or args.concurrencies != DEFAULT_CONCURRENCIES or args.prompt_lengths != "2048,4096,8192,16384":
             parser.error("prepare operates on all formats of each selected --models size; cell selectors apply to plan/run")
         check_devices(devices, environment)
         prepare_models(selected, devices)

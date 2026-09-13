@@ -30,6 +30,12 @@ EXTENSION = (32768, 65536)
 REPETITIONS = 1
 CAPTURES = 1
 OUTPUT_TOKENS = 512
+RUNTIME_PLOTS = (
+    ("throughput", "output_tokens_per_second_mean", "Generated tokens / second"),
+    ("ttft", "ttft_p95_ms", "TTFT p95 (ms)"),
+    ("tpot", "tpot_p95_ms", "TPOT p95 (ms)"),
+    ("memory", "gpu0_peak_vram_gib", "Peak sampled GPU memory (GiB)"),
+)
 PIN = "3f5e94d7c2ab2267fe39852051777fe30c1f49ef"
 CAPACITY_STATUSES = {"capacity_estimated", "observed_oom", "observed_headroom_limit",
                      "native_context_unsupported"}
@@ -857,6 +863,21 @@ def interpretation_review(study_root):
             "missing_or_invalid": errors, "review_marker": str(marker.relative_to(study_root))}
 
 
+def existing_runtime_plots(runtime, output):
+    """Keep saved plot links during status refreshes without creating images."""
+    families = {row["model"] for row in runtime}
+    artifacts = []
+    for family in FORMATS:
+        if family not in families:
+            continue
+        for name, _, _ in RUNTIME_PLOTS:
+            for suffix in ("png", "svg"):
+                path = output / f"{family}-{name}.{suffix}"
+                if path.is_file():
+                    artifacts.append(str(path.relative_to(output.parent)))
+    return artifacts
+
+
 def plot_runtime(runtime, output):
     if not runtime:
         return []
@@ -870,12 +891,7 @@ def plot_runtime(runtime, output):
         rows = [row for row in runtime if row["model"] == family]
         if not rows:
             continue
-        for name, metric, ylabel in (
-            ("throughput", "output_tokens_per_second_mean", "Generated tokens / second"),
-            ("ttft", "ttft_p95_ms", "TTFT p95 (ms)"),
-            ("tpot", "tpot_p95_ms", "TPOT p95 (ms)"),
-            ("memory", "gpu0_peak_vram_gib", "Peak sampled GPU memory (GiB)"),
-        ):
+        for name, metric, ylabel in RUNTIME_PLOTS:
             figure, axes = plt.subplots(2, 2, figsize=(10, 7), sharex=True, layout="constrained")
             axes.flat[0].set_xscale("log", base=2)
             axes.flat[0].set_xlim(PROMPTS[0] / 2 ** .15, PROMPTS[-1] * 2 ** .15)
@@ -1001,7 +1017,8 @@ def build_report(study_root, plots=True):
                                        for operation in read_json(path).get("operations", []))
     profiles = profile_requirements(capacity, joint, kernels, counters, selected_operations, coverage[1])
     diagnostics, diagnostic_coverage = diagnostic_tables(study_root)
-    artifacts = plot_runtime(runtime, output / "plots") if plots else []
+    artifacts = (plot_runtime(runtime, output / "plots") if plots
+                 else existing_runtime_plots(runtime, output / "plots"))
     tables = {"runtime.csv": runtime, "capacity-extension.csv": extension, "capacity.csv": capacity,
               "max-inputs.csv": maximum, "joint-inputs.csv": joint, "profile-kernels.csv": kernels,
               "profile-counter-launches.csv": counter_launches, "profile-counters.csv": counters,
@@ -1150,7 +1167,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--study-root", type=Path, required=True,
                         help="results/cuda-context-study overview, or legacy results/context-study/RUN_TAG")
-    parser.add_argument("--no-plots", action="store_true", help="Skip plot generation, for incremental status refreshes")
+    parser.add_argument("--no-plots", action="store_true",
+                        help="Skip plot generation but retain existing plot embeds, for incremental status refreshes")
     args = parser.parse_args()
     try:
         audit = build_report(args.study_root, plots=not args.no_plots)

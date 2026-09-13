@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import report_context_study as report
 
@@ -124,6 +125,34 @@ class ContextReportTests(unittest.TestCase):
         row = next(row for row in report.read_csv(self.root / "report/capacity.csv") if row["status"] == "incomplete")
         self.assertEqual(row["validated_repetitions"], "0")
         self.assertIn("r1", row["validation_errors"])
+
+    def test_no_plots_retains_existing_embeds_without_generating_images(self):
+        fixture(self.root)
+        plot_dir = self.root / "report/plots"
+        plot_dir.mkdir(parents=True)
+        for name in ("1b-throughput.png", "1b-throughput.svg", "1b-memory.png",
+                     "8b-throughput.png", "unrelated.png"):
+            (plot_dir / name).write_bytes(b"saved image")
+        before = {path.name: (path.read_bytes(), path.stat().st_mtime_ns)
+                  for path in plot_dir.iterdir()}
+        with patch.object(report, "plot_runtime") as generate:
+            audit = report.build_report(self.root, plots=False)
+        generate.assert_not_called()
+        self.assertEqual(audit["plots"], ["plots/1b-throughput.png", "plots/1b-throughput.svg",
+                                         "plots/1b-memory.png"])
+        index = (self.root / "report/index.md").read_text()
+        self.assertIn("![1b-throughput](plots/1b-throughput.png)", index)
+        self.assertIn("![1b-memory](plots/1b-memory.png)", index)
+        self.assertEqual(index.count("!["), 2)
+        self.assertEqual(before, {path.name: (path.read_bytes(), path.stat().st_mtime_ns)
+                                  for path in plot_dir.iterdir()})
+
+    def test_no_plots_without_saved_images_does_not_embed_missing_files(self):
+        fixture(self.root)
+        audit = report.build_report(self.root, plots=False)
+        self.assertEqual(audit["plots"], [])
+        self.assertNotIn("![", (self.root / "report/index.md").read_text())
+        self.assertFalse((self.root / "report/plots").exists())
 
     def test_invalid_record_is_rejected_despite_success_summary(self):
         folder = fixture(self.root)

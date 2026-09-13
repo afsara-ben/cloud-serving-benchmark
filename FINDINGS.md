@@ -13,9 +13,9 @@ uses its original workload and GPU layout.
 The amended extension compares IQ1_M, Q2_K, Q4_K_M, Q8_0 and feasible FP16 for
 all three sizes, using **one measured run per setting**. Existing validated first
 runs are reused; previous extra repetitions are excluded from these comparisons.
-The broader serving sweep is paused. A requested [70B Q2/Q4 hardware investigation](results/cuda-context-study/diagnostics/70b-q2-q4-priority-plan.md)
-is profiling the completed 2k-input/eight-client settings; paired counter analysis
-and controlled matrix tests are still in progress.
+The broader serving sweep is paused. The requested [70B Q2/Q4 hardware investigation](results/cuda-context-study/diagnostics/q2-q4-priority/README.md)
+is complete for the selected 2k-input/eight-client operations on both GPUs,
+including paired counters and isolated width/dispatch controls.
 
 **FP16 KV has a different per-token footprint in each model.** Summed across
 both GPUs, each allocated token position in one request consumes
@@ -165,7 +165,8 @@ paths, and causes. They do not establish run-to-run repeatability.
 
 **70B Q4_K_M serving and capacity testing is complete:** nine measured settings
 and 15 predicted capacity exclusions resolve its grid. The other 70B quantized
-formats and fresh hardware profiling are still in progress or queued.
+formats remain incomplete and paused. The targeted Q2/Q4 hardware investigation
+below is complete; the broader profiling grid remains pending.
 
 | Clients | Largest validated input | FP16 KV, both GPUs | Minimum sampled headroom, GPU0 / GPU1 | Output tok/s at that input |
 |---|---:|---:|---:|---:|
@@ -203,49 +204,74 @@ higher**. Both runs completed all 16 requests with identical rendered inputs,
 exact outputs, full transformer/KV placement, and zero sampled swap. GPU0 recorded
 software thermal limiting in both; neither GPU recorded hardware thermal limiting,
 and GPU1 recorded no software thermal limiting. These are single-run observations;
-the hardware follow-up below begins to explain the matrix-kernel costs.
+the hardware follow-up below identifies the extra matrix-kernel work.
 
-**70B prefill: Q2 saves DRAM traffic but executes substantially more instructions.**
-The first paired hardware captures compare the gate/up projections on GPU0 at
-`M=28672, N=512, K=8192`, with identical grids and thread-block dimensions. Each
-format contributes five launches from one capture: three gate and two up
-projections, matched by phase, tensor type, and unfused matrix geometry.
+**70B hardware cause: Q2's smaller memory traffic is outweighed by extra instruction work.**
+The completed paired captures compare real-model gate/up projections at
+`M=28672, K=8192`: pure prefill uses `N=512` and pure decode `N=8`.
+Each format/device/phase contributes five launches from one capture, pooling
+three gate and two up projections with identical unfused geometry. Width means
+token vectors in one matrix operation; 512 here is the prefill processing chunk,
+within a 2,048-token input.
 
-| Median per launch | Q4_K tensor | Q2_K tensor |
-|---|---:|---:|
-| Profiled kernel duration | 2.264 ms | 3.363 ms |
-| DRAM bytes read | 184.59 MB | 129.14 MB |
-| Executed instructions | 683.70 million | 1159.62 million |
-| Active-cycle IPC | 2.14 | 2.37 |
-| L2 sector hit rate | 89.12% | 91.50% |
-| Achieved occupancy | 16.67% | 16.71% |
-| Local-memory load/store sectors | 0 / 0 | 0 / 0 |
-
-Q2 takes **48.5% longer despite reading 30.0% fewer DRAM bytes**. It executes
-**69.6% more instructions**, even though its IPC is higher. The instruction mix
-locates substantial extra work in floating-point multiply-adds (**1.875×**),
-integer-to-float conversions (**2.25×**), and integer tensor instructions
-(**2.25×**). These are executed opcode counts; different tensor-instruction
-shapes must not be interpreted as equal arithmetic work per instruction.
-Registers rise from 221 to 254 per thread, but both kernels remain limited to
-one block per SM with essentially equal achieved occupancy and no measured spills.
+| Phase | GPU | Q4 → Q2 median kernel duration | Q2 instructions | Q2 DRAM reads | Q2 duration |
+|---|---:|---:|---:|---:|---:|
+| Prefill | 0 | 2.264 → 3.363 ms | +69.6% | −30.0% | +48.5% |
+| Prefill | 1 | 2.246 → 3.323 ms | +69.6% | −30.1% | +48.0% |
+| Decode | 0 | 318.24 → 402.30 µs | +35.2% | −41.6% | +26.4% |
+| Decode | 1 | 316.77 → 398.53 µs | +35.2% | −41.6% | +25.8% |
 
 The pinned [quantization layouts](vendor/llama.cpp/ggml/src/ggml-common.h#L293)
 use scale/offset groups of **16 weights for Q2 versus 32 for Q4**. The NVIDIA
 [Q2 matrix path](vendor/llama.cpp/ggml/src/ggml-cuda/mmq-vec-dot.cuh#L751)
-performs smaller partial dot products and additional offset corrections, whereas
-the [Q4 matrix path](vendor/llama.cpp/ggml/src/ggml-cuda/mmq-vec-dot.cuh#L363)
-handles larger groups. This connects the measured instruction overhead to the
-quantization implementation inside the fused matrix kernel. Higher cache hit
-rate, lower DRAM traffic, unchanged occupancy, and zero local-memory sectors do
-not support cache misses, bandwidth saturation, or spilling as this operation's
-Q2 penalty. [Counter values and sample identities](results/cuda-context-study/diagnostics/q2-q4-priority/prefill-gpu0-primary-comparison.json).
+performs smaller partial products and additional offset corrections; the
+[Q4 path](vendor/llama.cpp/ggml/src/ggml-cuda/mmq-vec-dot.cuh#L363) handles larger
+groups. Prefill counters show **1.875× floating-point multiply-adds** and
+**2.25× integer-to-float conversions**; decode shows **1.8× and 2×**, respectively.
+This locates substantial overhead in scaling/conversion/correction inside the
+quantized kernels. Both formats handle quantization inside their prefill/decode
+kernels. Their prefill path avoids the separate FP16 weight reconstruction
+observed for IQ1_M tensors.
 
-This is an interim **GPU0 prefill** result from the 2k-input/512-output follow-up;
-it does not quantify the entire serving slowdown or the earlier 128-output
-percentages. Decode, GPU1, and controlled matrix checks are still underway.
-Counters use kernel replay with cache and clock control set to `none`; durations
-are diagnostic and do not replace the unprofiled serving results.
+**Lower L2 hit rate does not explain the decode penalty.** Q2's L1 hit rate is
+higher and absolute DRAM traffic is lower. On GPU0, long-scoreboard stalls fall
+from **0.75 to 0.07 cycles per issued instruction**, while instruction-fetch
+stalls remain **0.02** for both formats. Decode registers rise **125 → 151** per
+thread, reducing the register-limited block count **8 → 6** and achieved occupancy
+from about **32% to 24%** on both GPUs. Neither kernel records local-memory spills.
+Prefill occupancy is essentially unchanged, about **16.7%**. Register pressure is
+measured, but its separate contribution to latency is not isolated; occupancy
+alone cannot explain performance. [Metric definitions](https://docs.nvidia.com/nsight-compute/ProfilingGuide/#sets-and-sections).
+
+**A dispatch change isolates a large avoidable cost at eight columns.** Stock
+A6000 dispatch uses the quantized matrix-vector kernel (MMVQ) through width 8 and
+switches to the quantized matrix-matrix kernel (MMQ) at width 9. In isolated,
+unprofiled gate/up tests, Q2 beats Q4 at width 1, loses at width 8, and wins again
+at width 9. Changing only Q2/Q3's width-8 dispatch to MMQ gives:
+
+| Controlled operation | GPU0 stock → earlier MMQ | GPU1 stock → earlier MMQ | Total-path instructions | DRAM reads |
+|---|---:|---:|---:|---:|
+| Gate/up, Q2_K | 485.70 → 214.29 µs | 485.26 → 211.92 µs | −78.3% | +1.1% |
+| Down, Q3_K | 542.55 → 297.72 µs | 534.38 → 296.25 µs | −69.9% | +1.4% |
+
+Thus the Q2 gate/up operation takes **56% less time (2.27–2.29× speedup)** with
+almost unchanged DRAM reads. The faster MMQ kernel actually has lower occupancy,
+which strengthens the explanation based on dispatch and instruction work.
+The Q2_K model uses Q3_K down projections; Q4_K_M uses a Q4_K/Q6_K mixture,
+so those types were tested separately. These controls use private diagnostic
+binaries; the serving binary and existing inference measurements are unchanged.
+[Full measurements, width plot, and raw counter links](results/cuda-context-study/diagnostics/q2-q4-priority/README.md).
+
+**Scope:** eight primary server captures and 44 isolated cases, each with one
+timing run and one counter capture, completed. Isolated timing is the median of
+20 internal synchronized operations; each counter case captures five operations.
+Experiments ran serially with swap disabled and no competing GPU workload.
+Counters use kernel replay with cache/clock control set to `none`; their timings
+do not replace unprofiled serving throughput. The width-1 harness is an unfused
+single-matrix reference, whereas serving can fuse gate/up at width 1. These
+results establish kernel mechanisms, without assigning exact shares of the
+whole-model slowdown or reproducing the earlier 128-output aggregate percentages.
+Full endpoint profiling remains deferred with the broader study.
 
 **Earlier 2k-input/128-output study:** the following results use the original
 workload and hardware layout described below.
@@ -356,7 +382,9 @@ latency or throughput. Six captures cover 70B on both GPUs.
   than Q4's with one request, but **16.8% more** with eight. Its eight-request
   prefill matrix kernels also take **32.7% more** time. These are observed kernel
   costs from the earlier workload. The new 512-output hardware follow-up above
-  identifies extra prefill instruction work; its decode investigation is ongoing.
+  identifies extra scaling/conversion instructions on both GPUs. Its dispatch
+  control cuts isolated Q2 width-8 operation time by 56% at nearly unchanged
+  DRAM traffic; this is an operation-level result, not a serving speedup.
 - With 70B prefix reuse, large-prompt matrix multiplication disappears, yet Q2's
   matrix-vector kernels still take **18.40 s versus Q4's 15.78 s**, or **16.6%
   longer**. Almost 99% of their matrix-vector calls process eight columns.
@@ -381,10 +409,11 @@ prefill removed, Q2 remains slower, as the prefix results above show. Smaller
 stored weights therefore do not compensate for the observed kernel costs
 under this workload. The newer paired prefill counters above now identify extra
 scaling/correction instruction work in the matched feed-forward projections.
-Batching reuses weights across activation columns, which can reduce the relative
-benefit of smaller weight storage, but that is an interpretation rather than a
-measured decode bottleneck. Attribution of the full decode slowdown still needs
-the ongoing decode counters and controlled tests.
+The completed isolated width tests reproduce a Q2 advantage at one column and
+disadvantage at eight. Switching Q2 to MMQ at eight cuts instructions by 78.3%
+and operation time by about 56%, with nearly unchanged DRAM reads. This identifies
+a dispatch-dependent arithmetic cost; the unfused control does not quantify the
+earlier single-client fused aggregate.
 The single-client result goes the other way: Q2's shorter matrix-vector time
 outweighs its slower prefill and gives higher end-to-end throughput.
 [Trace comparisons](results/70b-audit.json).
@@ -443,7 +472,7 @@ launch. This precision limit remains: 88 of the main 166 launches are under
 The [independent audit](results/cuda-study-1b/hardware-counters/independent-audit.json) verifies
 all requested raw values, model hashes, request lengths/cache behavior and gates.
 These measurements resolve counter access and provide 1B hardware values.
-They do not establish hardware bottlenecks for the unprofiled 8B/70B models.
+Those 1B measurements alone do not establish hardware bottlenecks for 8B or 70B.
 
 **Which source findings transfer?**
 
@@ -463,7 +492,8 @@ They do not establish hardware bottlenecks for the unprofiled 8B/70B models.
 - **IPC, cache, bandwidth and execution activity: now measured for selected 1B
   kernels.** The values above replace the previous access blocker. NVIDIA IPC
   and load-sector metrics do not directly reproduce AMD's IPC/coalescing values;
-  no whole-workload roofline or 8B/70B counter conclusion follows. January 10's
+  no whole-workload roofline or 8B/70B counter conclusion follows from these
+  1B measurements. The separate 70B investigation appears above. January 10's
   roofline concerns 1B Q4_0, separately from its 70B discussion.
   [Article](https://medium.com/@afsara.benazir/what-rocm-profiling-revealed-about-quantized-llms-on-amds-fastest-gpu-c0edfab9624f).
 
@@ -471,8 +501,8 @@ They do not establish hardware bottlenecks for the unprofiled 8B/70B models.
 128 output tokens. The long-context extension follows the [approved plan](FUTURE_WORK.md):
 power-of-two **input** lengths, 512 outputs, and 8/16/32/64 clients, with capacity
 limits checked for each setting. Its 1B and 8B serving/capacity sweeps are complete;
-70B inference, fresh comparative profiling, and controlled kernel diagnostics
-remain in progress or pending. The [current report](results/cuda-context-study/report/index.md)
+remaining 70B inference and broader profiling are paused. The targeted 70B
+Q2/Q4 counters and width/dispatch diagnostics above are complete. The [current report](results/cuda-context-study/report/index.md)
 records their separate completion states. A 131,072-token input plus 512 outputs
 exceeds the models' native 131,072-token context and is recorded as unsupported.
 

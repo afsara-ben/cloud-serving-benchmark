@@ -1,0 +1,29 @@
+{
+  "scope": "Existing 70B measurements only; this build launches no experiments.",
+  "inputs": [
+    {
+      "path": "results/cuda-context-study/report/runtime.csv",
+      "sha256": "54bf130891105e2046415be99882b2138eb21d460292c52b1dc0ae03af9c8fb1"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-priority/controlled-timings.csv",
+      "sha256": "ff83649ca09e19b0ba6f50cb2a10307d599873d772b1e17580670ea5c21f2ea0"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-priority/dispatch-control.csv",
+      "sha256": "6dada6520e54c6d0a653f689e51549bf1c99a676af4416058a6622f6cb3bbbf2"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-priority/primary-hardware-metrics.csv",
+      "sha256": "d02f6c7caeab9a5cf67854666ac7484c953fe76af640daa103ceeea9e9b1f012"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-priority/summary.json",
+      "sha256": "593a195fbea3f46a55bc1863fa1e62d9886a49dba8eecb277a49ff03ba126857"
+    },
+    {
+      "path": "results/cuda-context-study/report/capacity.csv",
+      "sha256": "2bff1e4131db8729512645924fe158b958825c98a6da601d6b2c447f494ed9ae"
+    }
+  ]
+}

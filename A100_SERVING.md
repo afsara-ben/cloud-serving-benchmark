@@ -1,15 +1,18 @@
 # A100 serving measurements
 
+For a separate kernel/hardware-counter capture of one completed setting, use
+[the A100 profiling commands](A100_PROFILING.md).
+
 Use `scripts/run_a100_serving.py` on one or two A100 SXM 80 GB GPUs. It runs
 Llama 1B, 8B, then 70B serially, and accepts individual model/format/client/input
-selections. The full scope is 112 settings:
+selections. The full scope is 224 settings:
 
 - 1B and 8B: IQ1_M, Q2_K, Q4_K_M, Q8_0, FP16.
 - 70B: IQ1_M, Q2_K, Q4_K_M, Q8_0. No 70B FP16 preparation or inference.
-- 8 and 64 clients; 2,048, 4,096, 8,192 and 16,384 input tokens.
+- 8, 16, 32 and 64 concurrent clients; 2,048, 4,096, 8,192 and 16,384 input tokens.
 - Exactly 512 output tokens per request, FP16 KV, prompt reuse off.
 - One measured run per setting. C discarded warmup requests, then 2C measured
-  requests. That is 8 + 16 requests at C8, and 64 + 128 at C64.
+  requests: 8 + 16 at C8, 16 + 32 at C16, 32 + 64 at C32, and 64 + 128 at C64.
 
 TTFT, TPOT, aggregate generated tokens/s and per-GPU peak memory are collected
 together. No profiler, prefix experiment, capacity extension, or matrix
@@ -71,13 +74,17 @@ python3 scripts/run_a100_serving.py plan --gpus 0,1 \
 python3 scripts/run_a100_serving.py run --gpus 0,1 \
   --models 8b --formats Q4_K_M --concurrencies 64 --prompt-lengths 4096
 
-# Run one model and format at both client counts and all four input lengths:
+# Run the new client counts for one model, format and input length:
+python3 scripts/run_a100_serving.py run --gpus 0,1 \
+  --models 8b --formats Q4_K_M --concurrencies 16,32 --prompt-lengths 4096
+
+# Run one model and format at all four client counts and input lengths:
 python3 scripts/run_a100_serving.py run --gpus 0,1 --models 70b --formats Q2_K
 
 # Run only one model, with all of its formats and settings:
 python3 scripts/run_a100_serving.py run --gpus 0,1 --models 1b
 
-# Run the entire 112-setting scope, serially in model order 1B, 8B, 70B:
+# Run the entire 224-setting scope, serially in model order 1B, 8B, 70B:
 python3 scripts/run_a100_serving.py run --gpus 0,1
 ```
 
@@ -94,12 +101,14 @@ later commands overlap. A genuinely independent repeat or a hardware/code/model
 change requires a fresh `--study-name`, used consistently for `run` and `report`.
 Use the updated code in a fresh destination series; old series created before
 the cell-selector change retain their old code fingerprint.
+Existing series limited to 8/64 clients also require a fresh `--study-name`
+for the expanded 8/16/32/64 grid; their scope and run fingerprints differ.
 
 ## Read the results
 
 Every run refreshes `serving-report/index.md`, `runtime.csv`, `capacity.csv`,
 `completion-audit.json`, and PNG/SVG plots for the available model sizes.
-The audit tracks these 112 settings only and requires no profiling. Partial
+The audit tracks these 224 settings only and requires no profiling. Partial
 selections remain visibly incomplete until the rest are measured or excluded.
 
 ```bash

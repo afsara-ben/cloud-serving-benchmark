@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import report_serving as serving
 import report_context_study as context
@@ -67,7 +68,7 @@ class ServingReportTests(unittest.TestCase):
         self.assertEqual(float(rows[0]["output_tokens_per_second_mean"]), 4096.)
         self.assertEqual(float(rows[0]["ttft_p95_ms"]), 200.)
         self.assertAlmostEqual(float(rows[0]["tpot_p95_ms"]), 1800 / 511)
-        self.assertEqual(audit["required_cells"], 112)
+        self.assertEqual(audit["required_cells"], 224)
         self.assertEqual(audit["measured_cells"], 1)
         self.assertFalse(any(row["model"] == "70b" and row["format"] == "FP16"
                              for row in context.read_csv(self.root / "serving-report/capacity.csv")))
@@ -80,6 +81,22 @@ class ServingReportTests(unittest.TestCase):
         self.assertEqual(float(row["gpu5_peak_vram_gib"]), 6.)
         self.assertEqual(len(audit["plots"]), 8)
         self.assertTrue(all((self.root / "serving-report" / path).is_file() for path in audit["plots"]))
+
+    def test_plots_include_measurements_at_all_four_concurrencies(self):
+        from matplotlib.figure import Figure
+        rows = [{"model": "8b", "format": "Q4_K_M", "concurrency": concurrency,
+                 "input_tokens": 4096, "output_tokens_per_second_mean": float(concurrency)}
+                for concurrency in (8, 16, 32, 64)]
+        throughputs = []
+
+        def inspect_plot(figure, path, **kwargs):
+            if path.name == "8b-throughput.png":
+                throughputs.extend((axis.get_title(), axis.lines[0].get_ydata()[1]) for axis in figure.axes)
+
+        with patch.object(Figure, "savefig", autospec=True, side_effect=inspect_plot):
+            serving.plot_metrics(rows, self.root / "plots", ["0"])
+        self.assertEqual(throughputs, [("8 clients", 8.), ("16 clients", 16.),
+                                      ("32 clients", 32.), ("64 clients", 64.)])
 
     def test_resources_from_wrong_gpu_are_rejected(self):
         folder = self.make_cell(["3"])
