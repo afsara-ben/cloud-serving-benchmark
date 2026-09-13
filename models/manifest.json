@@ -1,0 +1,29 @@
+[
+  {
+    "quant": "Q8_0",
+    "repo": "mradermacher/Llama-3.2-1B-Instruct-GGUF",
+    "revision": "f6a87fc516a1558e5633f77b3170e011ca6f3931",
+    "filename": "Llama-3.2-1B-Instruct.Q8_0.gguf",
+    "url": "https://huggingface.co/mradermacher/Llama-3.2-1B-Instruct-GGUF/resolve/f6a87fc516a1558e5633f77b3170e011ca6f3931/Llama-3.2-1B-Instruct.Q8_0.gguf",
+    "bytes": 1321083168,
+    "sha256": "9f0362190a4f36db0994af7daddfe61b68fc1643416ac1f2f1c7eb680377d87c"
+  },
+  {
+    "quant": "Q4_K_M",
+    "repo": "mradermacher/Llama-3.2-1B-Instruct-i1-GGUF",
+    "revision": "c61badb55d4d35ee6661a9ea178d9456404237b9",
+    "filename": "Llama-3.2-1B-Instruct.i1-Q4_K_M.gguf",
+    "url": "https://huggingface.co/mradermacher/Llama-3.2-1B-Instruct-i1-GGUF/resolve/c61badb55d4d35ee6661a9ea178d9456404237b9/Llama-3.2-1B-Instruct.i1-Q4_K_M.gguf",
+    "bytes": 807694880,
+    "sha256": "221767504a95e684728dee49995d9b02ea93ef3b7ae1079f8bc73d477a47a762"
+  },
+  {
+    "quant": "IQ1_M",
+    "repo": "mradermacher/Llama-3.2-1B-Instruct-i1-GGUF",
+    "revision": "c61badb55d4d35ee6661a9ea178d9456404237b9",
+    "filename": "Llama-3.2-1B-Instruct.i1-IQ1_M.gguf",
+    "url": "https://huggingface.co/mradermacher/Llama-3.2-1B-Instruct-i1-GGUF/resolve/c61badb55d4d35ee6661a9ea178d9456404237b9/Llama-3.2-1B-Instruct.i1-IQ1_M.gguf",
+    "bytes": 413606432,
+    "sha256": "286cb2442ce654fd6e7f2a1322b7dae8783f13305d4257758bd29843871b8852"
+  }
+]

@@ -1,0 +1,28 @@
+[
+  {
+    "quant": "Q4_K_M",
+    "model_family": "Llama-3.3-70B-Instruct",
+    "filename": "Llama-3.3-70B-Instruct-Q4_K_M.gguf",
+    "path": "/data/home/hys4qm/Llama-3.3-70B-Instruct-Q4_K_M.gguf",
+    "bytes": 42520398816,
+    "sha256": "32df3baccb556f9840059b2528b2dee4d3d516b24afdfb9d0c56ff5f63e3a664",
+    "provenance": "Existing user-supplied local GGUF; upstream conversion revision unavailable",
+    "parameters": 70553706560,
+    "layers": 80,
+    "kv_heads": 8,
+    "head_dimension": 128
+  },
+  {
+    "quant": "Q2_K",
+    "model_family": "Llama-3.3-70B-Instruct",
+    "filename": "Llama-3.3-70B-Instruct-Q2_K.gguf",
+    "path": "/data/home/hys4qm/Llama-3.3-70B-Instruct-Q2_K.gguf",
+    "bytes": 26375113696,
+    "sha256": "9b2b9e9b0b0c8c2a6fc331b4df3cd837859be5634778f665e8d64765f123df25",
+    "provenance": "Existing user-supplied local GGUF; upstream conversion revision unavailable",
+    "parameters": 70553706560,
+    "layers": 80,
+    "kv_heads": 8,
+    "head_dimension": 128
+  }
+]

@@ -8,7 +8,8 @@ if [[ ! -f "$SERVER_PID_FILE" ]]; then
 fi
 
 server_pid="$(<"$SERVER_PID_FILE")"
-if ! kill -0 "$server_pid" 2>/dev/null; then
+server_state="$(ps -p "$server_pid" -o stat= 2>/dev/null || true)"
+if ! kill -0 "$server_pid" 2>/dev/null || [[ "$server_state" == Z* ]]; then
   rm -f "$SERVER_PID_FILE"
   echo "The recorded server process is no longer running."
   exit 0
@@ -21,7 +22,8 @@ fi
 
 kill "$server_pid"
 for _ in $(seq 1 30); do
-  if ! kill -0 "$server_pid" 2>/dev/null; then
+  server_state="$(ps -p "$server_pid" -o stat= 2>/dev/null || true)"
+  if ! kill -0 "$server_pid" 2>/dev/null || [[ "$server_state" == Z* ]]; then
     rm -f "$SERVER_PID_FILE"
     echo "llama-server stopped."
     exit 0

@@ -1,8 +1,12 @@
 vendor/llama.cpp/
 models/*.gguf
+models/.cache/
+models/*.gguf.converting
 logs/*.log
 .run/
 results/*/
 results/*.json
 __pycache__/
 *.pyc
+.venv-a100-serving/
+tmp/

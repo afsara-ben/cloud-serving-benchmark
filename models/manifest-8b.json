@@ -1,0 +1,29 @@
+[
+  {
+    "quant": "Q8_0",
+    "repo": "mradermacher/Meta-Llama-3.1-8B-Instruct-GGUF",
+    "revision": "2dc2468402f8a982228a15d7c296d86f7c2b84ff",
+    "filename": "Meta-Llama-3.1-8B-Instruct.Q8_0.gguf",
+    "url": "https://huggingface.co/mradermacher/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/2dc2468402f8a982228a15d7c296d86f7c2b84ff/Meta-Llama-3.1-8B-Instruct.Q8_0.gguf",
+    "bytes": 8540771744,
+    "sha256": "258c49555c709d90c7642e2ae59391bd91bcec22077bdd5cf7ec126f3b45f1fb"
+  },
+  {
+    "quant": "Q4_K_M",
+    "repo": "mradermacher/Meta-Llama-3.1-8B-Instruct-i1-GGUF",
+    "revision": "15a6b2be4570af9886c5cde164ddc8f41b4d7520",
+    "filename": "Meta-Llama-3.1-8B-Instruct.i1-Q4_K_M.gguf",
+    "url": "https://huggingface.co/mradermacher/Meta-Llama-3.1-8B-Instruct-i1-GGUF/resolve/15a6b2be4570af9886c5cde164ddc8f41b4d7520/Meta-Llama-3.1-8B-Instruct.i1-Q4_K_M.gguf",
+    "bytes": 4920735392,
+    "sha256": "85465a58bf902b8fe36e1e719fd1ddc23305110a6b19233f10560dfd1180f77a"
+  },
+  {
+    "quant": "IQ1_M",
+    "repo": "mradermacher/Meta-Llama-3.1-8B-Instruct-i1-GGUF",
+    "revision": "15a6b2be4570af9886c5cde164ddc8f41b4d7520",
+    "filename": "Meta-Llama-3.1-8B-Instruct.i1-IQ1_M.gguf",
+    "url": "https://huggingface.co/mradermacher/Meta-Llama-3.1-8B-Instruct-i1-GGUF/resolve/15a6b2be4570af9886c5cde164ddc8f41b4d7520/Meta-Llama-3.1-8B-Instruct.i1-IQ1_M.gguf",
+    "bytes": 2161972896,
+    "sha256": "9c09f635975e581bbb8bede25c6e96e55e24c543adaa51444f2edf02be60b289"
+  }
+]

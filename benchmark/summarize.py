@@ -53,20 +53,30 @@ def main() -> int:
     args = parser.parse_args()
 
     documents = []
-    for path in sorted(args.raw_dir.glob("*.json")):
+    paths = set(args.raw_dir.glob("*.json")) | set(args.raw_dir.rglob("raw.json"))
+    for path in sorted(paths):
         document = json.loads(path.read_text(encoding="utf-8"))
+        if not all(key in document for key in ("configuration", "requests", "summary")):
+            continue
         document["_path"] = str(path)
         documents.append(document)
     if not documents:
         parser.error(f"no JSON result files found in {args.raw_dir}")
 
-    grouped: dict[tuple[str, int], list[dict[str, Any]]] = defaultdict(list)
+    grouped: dict[tuple[str, int, int, int, int, bool, bool], list[dict[str, Any]]] = defaultdict(list)
     for document in documents:
-        key = (document["model"], int(document["configuration"]["concurrency"]))
+        config = document["configuration"]
+        key = (
+            document["model"], int(config["concurrency"]),
+            int(config["target_prompt_tokens"]), int(config["max_output_tokens"]),
+            int(document.get("schema_version", 1)),
+            bool(config.get("repeat_prompt", False)),
+            bool(config.get("prefix_reuse", config.get("prompt_cache_requested", False))),
+        )
         grouped[key].append(document)
 
     rows: list[dict[str, Any]] = []
-    for (model, concurrency), runs in sorted(grouped.items()):
+    for (model, concurrency, prompt_length, output_length, schema_version, repeat_prompt, prefix_reuse), runs in sorted(grouped.items()):
         successful_records = [
             record
             for run in runs
@@ -82,11 +92,17 @@ def main() -> int:
         request_rates = numeric([run["summary"].get("requests_per_second") for run in runs])
         output_rates = numeric([run["summary"].get("output_tokens_per_second") for run in runs])
         total_rates = numeric([run["summary"].get("total_tokens_per_second") for run in runs])
+        overlaps = numeric([run["summary"].get("max_client_inflight") for run in runs])
 
         rows.append(
             {
                 "model": model,
                 "concurrency": concurrency,
+                "target_prompt_tokens": prompt_length,
+                "max_output_tokens": output_length,
+                "schema_version": schema_version,
+                "repeat_prompt": repeat_prompt,
+                "prefix_reuse": prefix_reuse,
                 "repetitions": len(runs),
                 "successful_requests": len(successful_records),
                 "failed_requests": sum(int(run["summary"]["failed_requests"]) for run in runs),
@@ -103,6 +119,16 @@ def main() -> int:
                 "e2e_p95_ms": percentile(e2e_ms, 0.95),
                 "mean_prompt_tokens": mean([float(record["prompt_tokens"]) for record in successful_records]),
                 "mean_completion_tokens": mean([float(record["completion_tokens"]) for record in successful_records]),
+                "mean_evaluated_prompt_tokens": mean(numeric([record.get("evaluated_prompt_tokens", record.get("server_prompt_tokens_evaluated")) for record in successful_records])),
+                "evaluated_prompt_tokens_per_second_mean": mean(numeric([run["summary"].get("evaluated_prompt_tokens_per_second") for run in runs])),
+                "max_client_inflight_min_across_runs": min(overlaps) if overlaps else None,
+                "mean_client_inflight": mean(numeric([run["summary"].get("mean_client_inflight") for run in runs])),
+                "output_length_invalid_requests": sum(int(run["summary"].get("output_length_invalid_requests", 0)) for run in runs),
+                "cache_counter_available_requests": sum(int(run["summary"].get("cache_counter_available_requests", 0)) for run in runs),
+                "cached_prompt_tokens": sum(int(run["summary"].get("cached_prompt_tokens", 0)) for run in runs),
+                "cache_hit_requests": sum(int(run["summary"].get("cache_hit_requests", 0)) for run in runs),
+                "server_prompt_p50_ms": percentile(numeric([record.get("server_timings", {}).get("prompt_ms") for record in successful_records]), 0.5),
+                "server_decode_p50_ms": percentile(numeric([record.get("server_timings", {}).get("predicted_ms") for record in successful_records]), 0.5),
             }
         )
 
@@ -117,25 +143,30 @@ def main() -> int:
         "",
         f"Generated: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
         "",
+        "Rates are means across repetitions; latency percentiles pool successful requests. "
+        "The timed interval runs from first HTTP request start through last stream completion and includes batch drain. "
+        "Client overlap demonstrates concurrent requests; server traces establish GPU batching. "
+        "Server prompt/decode timings are elapsed per-request intervals and overlap across concurrent requests. "
+        "Logical input counts include cached tokens; evaluated prompt counts measure the work remaining after reuse.",
+        "",
+        "| Model | Input / reuse | Prompt / output | Clients | Runs | Valid / failed | Output tok/s (SD) | TTFT p50 / p95 ms | TPOT p50 / p95 ms |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for row in rows:
-        lines.extend(
-            [
-                f"## {row['model']} at concurrency {row['concurrency']}",
-                "",
-                f"- Repetitions: {row['repetitions']}",
-                f"- Successful requests: {row['successful_requests']} (failed: {row['failed_requests']})",
-                f"- Mean request rate: {fmt(row['requests_per_second_mean'])} req/s (run-to-run SD {fmt(row['requests_per_second_stddev'])})",
-                f"- Mean output throughput: {fmt(row['output_tokens_per_second_mean'])} tokens/s (run-to-run SD {fmt(row['output_tokens_per_second_stddev'])})",
-                f"- Mean total-token throughput: {fmt(row['total_tokens_per_second_mean'])} tokens/s",
-                f"- TTFT: p50 {fmt(row['ttft_p50_ms'])} ms; p95 {fmt(row['ttft_p95_ms'])} ms",
-                f"- TPOT: p50 {fmt(row['tpot_p50_ms'])} ms; p95 {fmt(row['tpot_p95_ms'])} ms",
-                f"- End-to-end latency: p50 {fmt(row['e2e_p50_ms'])} ms; p95 {fmt(row['e2e_p95_ms'])} ms",
-                f"- Mean measured prompt/completion length: {fmt(row['mean_prompt_tokens'], 1)} / {fmt(row['mean_completion_tokens'], 1)} tokens",
-                "",
-            ]
+        lines.append(
+            f"| {row['model']} | {'repeated' if row['repeat_prompt'] else 'varied'} / {'on' if row['prefix_reuse'] else 'off'} "
+            f"| {row['target_prompt_tokens']} / {row['max_output_tokens']} "
+            f"| {row['concurrency']} | {row['repetitions']} "
+            f"| {row['successful_requests']} / {row['failed_requests']} "
+            f"| {fmt(row['output_tokens_per_second_mean'])} ({fmt(row['output_tokens_per_second_stddev'])}) "
+            f"| {fmt(row['ttft_p50_ms'])} / {fmt(row['ttft_p95_ms'])} "
+            f"| {fmt(row['tpot_p50_ms'])} / {fmt(row['tpot_p95_ms'])} |"
         )
+    lines.extend(["", "The CSV retains end-to-end latency, server phase timings, cache counters, and observed client overlap.", ""])
+    if any(row["schema_version"] < 2 for row in rows):
+        lines.extend(["Warning: schema v1 results use retokenized text counts and lack cache/overlap validation. They are kept separate from v2 results.", ""])
 
+    args.output_markdown.parent.mkdir(parents=True, exist_ok=True)
     args.output_markdown.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {args.output_csv}")
     print(f"Wrote {args.output_markdown}")
