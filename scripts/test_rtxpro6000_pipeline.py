@@ -100,6 +100,60 @@ class PipelineTests(unittest.TestCase):
         self.assertNotIn("+ ssh", result.stdout)
         self.assertFalse((self.root / "BAD").exists())
 
+    def test_fetch_reads_remote_sources_without_requiring_local_models(self):
+        result = self.invoke("fetch-models", "--dry-run", "--source-host", "user@source",
+                             "--source-dir", "/data/models")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("user@source:/data/models/Llama-3.3-70B-Instruct-Q2_K.gguf", result.stdout)
+        self.assertIn("user@source:/data/models/Llama-3.3-70B-Instruct-Q4_K_M.gguf", result.stdout)
+        self.assertIn(str(self.root / "models") + "/", result.stdout)
+        self.assertLess(result.stdout.index("+ ssh"), result.stdout.index("+ rsync"))
+        self.assertFalse((self.root / "models").exists())
+        self.assertFalse(self.calls.exists())
+        result = self.invoke("fetch-models", "--dry-run")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("requires --source-host", result.stderr)
+        result = self.invoke("fetch-models", "--dry-run", "--source-host", "user@source",
+                             "--source-dir", "/data/$(touch BAD)")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("+ ssh", result.stdout)
+
+    def test_fetch_stops_after_failed_source_check(self):
+        tools = self.root / "tools"
+        tools.mkdir()
+        for command, body in (("ssh", "exit 23"), ("rsync", "touch RSYNC_WAS_RUN")):
+            path = tools / command
+            path.write_text("#!/bin/sh\n" + body + "\n")
+            path.chmod(0o755)
+        self.env["PATH"] = str(tools) + os.pathsep + os.environ["PATH"]
+        result = self.invoke("fetch-models", "--source-host", "user@source")
+        self.assertEqual(result.returncode, 23)
+        self.assertFalse((self.root / "models").exists())
+        self.assertFalse((self.root / "RSYNC_WAS_RUN").exists())
+
+    def test_fetch_stores_files_in_selected_local_directory_and_links_checkout(self):
+        tools = self.root / "tools"
+        tools.mkdir()
+        ssh = tools / "ssh"
+        ssh.write_text("#!/bin/sh\nexit 0\n")
+        ssh.chmod(0o755)
+        rsync = tools / "rsync"
+        rsync.write_text("#!/usr/bin/env python3\nfrom pathlib import Path\nimport sys\n"
+                         "for source in sys.argv[sys.argv.index('--') + 1:-1]:\n"
+                         "    (Path(sys.argv[-1]) / Path(source).name).write_text('synthetic GGUF')\n")
+        rsync.chmod(0o755)
+        self.env["PATH"] = str(tools) + os.pathsep + os.environ["PATH"]
+        storage = self.root / "NVMe storage"
+        result = self.invoke("fetch-models", "--source-host", "user@source", "--model-dir", str(storage))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for quant in ("Q2_K", "Q4_K_M"):
+            name = f"Llama-3.3-70B-Instruct-{quant}.gguf"
+            stored, linked = storage / name, self.root / "models" / name
+            self.assertEqual(stored.read_text(), "synthetic GGUF")
+            self.assertTrue(linked.is_symlink())
+            self.assertEqual(linked.resolve(), stored.resolve())
+        self.assertFalse(self.calls.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

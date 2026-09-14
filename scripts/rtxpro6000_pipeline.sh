@@ -9,8 +9,12 @@ csb_stage=arguments
 csb_study="${STUDY_NAME:-cuda-context-study-rtxpro6000-r1}"
 csb_gpus="${GPU_DEVICE:-0,1}"
 csb_model_dir="${CSB_MODEL_DIR:-$HOME}"
+csb_model_dir_explicit=0
+if [[ -n "${CSB_MODEL_DIR:-}" ]]; then csb_model_dir_explicit=1; fi
 csb_remote_host="${CSB_REMOTE_HOST:-hys4qm@l2x02}"
 csb_remote_dir="${CSB_REMOTE_DIR:-/scratch/cloud-serving-benchmark}"
+csb_source_host="${CSB_SOURCE_HOST:-}"
+csb_source_dir="${CSB_SOURCE_DIR:-/data/home/hys4qm}"
 csb_venv="${CSB_VENV:-$csb_root/.venv-rtxpro6000}"
 
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -29,14 +33,18 @@ Actions (default: all):
   profile          Nsight preflight, diagnostic build, 2K/32K captures and PDFs.
   report           Rebuild the serving report, poster and both bottleneck PDFs.
   transfer-models  Run ON THE ORIGINAL MACHINE: rsync exact Q2/Q4 files to remote.
+  fetch-models     Run ON THE GPU SERVER: pull Q2/Q4 from --source-host over SSH.
 
 Options:
   --dry-run        Print commands; no installs, transfers, writes or GPU jobs.
   --study-name ID  Results series (default: STUDY_NAME or cuda-context-study-rtxpro6000-r1).
   --gpus IDS       Two physical indices (default: GPU_DEVICE or 0,1).
-  --model-dir DIR  Local directory holding Q2/Q4 GGUFs (default: CSB_MODEL_DIR or HOME).
+  --model-dir DIR  Local GGUF directory, including NVMe; fetch-models stores files
+                   here (fetch default: checkout/models; otherwise CSB_MODEL_DIR or HOME).
   --remote-host H  Model-transfer destination (default: CSB_REMOTE_HOST or hys4qm@l2x02).
   --remote-dir DIR Remote checkout (default: CSB_REMOTE_DIR or /scratch/cloud-serving-benchmark).
+  --source-host H  fetch-models source SSH host, e.g. hys4qm@xsel02 (or CSB_SOURCE_HOST).
+  --source-dir DIR fetch-models source directory (default: CSB_SOURCE_DIR or /data/home/hys4qm).
   -h, --help       Show this help without doing work.
 
 Environment: CSB_VENV overrides the Python environment directory; NCU_BIN selects
@@ -45,7 +53,7 @@ can point to a directory containing nvtx3/nvToolsExt.h.
 
 Run on an idle allocation with two RTX PRO 6000 96GB GPUs and CUDA >=12.8.
 No sudo or driver changes are performed. Missing Q2/Q4 files stop setup before
-installation/build/downloads; use transfer-models or --model-dir to supply them.
+installation/build/downloads; use fetch-models, transfer-models or --model-dir.
 Successful measurements resume with unchanged identity. Failed captures remain
 preserved; see RTX_PRO_6000.md for retry commands using a fresh capture directory.
 HELP
@@ -53,16 +61,18 @@ HELP
 
 while (($#)); do
   case "$1" in
-    all|setup|serving|nsight|profile|report|transfer-models) csb_action="$1"; shift ;;
+    all|setup|serving|nsight|profile|report|transfer-models|fetch-models) csb_action="$1"; shift ;;
     --dry-run) csb_dry_run=1; shift ;;
-    --study-name|--gpus|--model-dir|--remote-host|--remote-dir)
+    --study-name|--gpus|--model-dir|--remote-host|--remote-dir|--source-host|--source-dir)
       (($# >= 2)) && [[ -n "$2" ]] || die "Missing value for $1"
       case "$1" in
         --study-name) csb_study="$2" ;;
         --gpus) csb_gpus="$2" ;;
-        --model-dir) csb_model_dir="$2" ;;
+        --model-dir) csb_model_dir="$2"; csb_model_dir_explicit=1 ;;
         --remote-host) csb_remote_host="$2" ;;
         --remote-dir) csb_remote_dir="$2" ;;
+        --source-host) csb_source_host="$2" ;;
+        --source-dir) csb_source_dir="$2" ;;
       esac
       shift 2 ;;
     -h|--help) usage; exit 0 ;;
@@ -73,6 +83,9 @@ done
 [[ "$csb_study" =~ ^[A-Za-z0-9_.-]+$ && "$csb_study" != . && "$csb_study" != .. ]] || die 'Invalid study name'
 [[ "$csb_gpus" =~ ^[0-9]+,[0-9]+$ && "${csb_gpus%,*}" != "${csb_gpus#*,}" ]] || die 'Select two distinct GPU indices, e.g. --gpus 0,1'
 # Resolve user-supplied relative paths before changing working directory.
+if [[ "$csb_action" = fetch-models ]] && (( ! csb_model_dir_explicit )); then
+  csb_model_dir="$csb_root/models"
+fi
 [[ "$csb_model_dir" = /* ]] || csb_model_dir="$PWD/$csb_model_dir"
 [[ "$csb_venv" = /* ]] || csb_venv="$PWD/$csb_venv"
 cd -- "$csb_root"
@@ -120,10 +133,11 @@ ensure_models() {
       missing=1
     fi
   done
-  (( missing == 0 )) || die 'Run transfer-models on the original machine, or use --model-dir /path/to/existing/GGUFs. No setup jobs were started.'
+  (( missing == 0 )) || die 'On this GPU server, run fetch-models --source-host USER@SOURCE_HOST; alternatively run transfer-models on the source machine or use --model-dir for existing local GGUFs. No setup jobs were started.'
   run mkdir -p "$csb_root/models"
   for name in "${csb_models[@]}"; do
-    if [[ ! -s "$csb_root/models/$name" && -s "$csb_model_dir/$name" ]]; then
+    if [[ ! -s "$csb_root/models/$name" && "$csb_model_dir" != "$csb_root/models" ]] &&
+       { [[ -s "$csb_model_dir/$name" ]] || (( csb_dry_run )); }; then
       [[ ! -e "$csb_root/models/$name" && ! -L "$csb_root/models/$name" ]] || die "Existing empty file or broken link: models/$name; repair it before setup."
       run ln -s "$csb_model_dir/$name" "$csb_root/models/$name"
     fi
@@ -223,11 +237,31 @@ transfer_models() {
   [[ "$csb_remote_dir" =~ ^/[A-Za-z0-9_./-]+$ ]] || die 'Remote checkout must be an absolute path without spaces or shell syntax.'
   local name sources=()
   for name in "${csb_models[@]}"; do
-    if (( ! csb_dry_run )); then [[ -s "$csb_model_dir/$name" ]] || die "Missing source GGUF: $csb_model_dir/$name"; fi
+    if (( ! csb_dry_run )); then
+      [[ -s "$csb_model_dir/$name" ]] || die "Missing source GGUF on this machine: $csb_model_dir/$name. transfer-models pushes LOCAL files. On the GPU server, use fetch-models --source-host USER@SOURCE_HOST --source-dir /path/on/source."
+    fi
     sources+=("$csb_model_dir/$name")
   done
   run ssh -- "$csb_remote_host" "mkdir -p -- '$csb_remote_dir/models'"
   run rsync -avP -- "${sources[@]}" "$csb_remote_host:$csb_remote_dir/models/"
+}
+
+fetch_models() {
+  csb_stage=fetch-models
+  require_tools rsync ssh
+  [[ -n "$csb_source_host" ]] || die 'fetch-models requires --source-host USER@SOURCE_HOST (the machine containing the original GGUFs).'
+  [[ "$csb_source_host" =~ ^[A-Za-z0-9_][A-Za-z0-9_.@-]*$ ]] || die 'Use a plain source SSH host or user@host (configure jump hosts in SSH config).'
+  [[ "$csb_source_dir" =~ ^/[A-Za-z0-9_./-]+$ ]] || die 'Source directory must be an absolute path without spaces or shell syntax.'
+  # Check both files on their actual host before transferring either file.
+  run ssh -- "$csb_source_host" "test -s '$csb_source_dir/${csb_models[0]}' && test -s '$csb_source_dir/${csb_models[1]}'"
+  run mkdir -p "$csb_model_dir"
+  local name sources=()
+  for name in "${csb_models[@]}"; do sources+=("$csb_source_host:$csb_source_dir/$name"); done
+  run rsync -avP -- "${sources[@]}" "$csb_model_dir/"
+  # Keep the large files in the selected NVMe directory; checkout-local names
+  # are symlinks when storage is outside the checkout.
+  ensure_models
+  printf 'GGUF storage directory: %s\n' "$csb_model_dir"
 }
 
 printf 'RTX PRO 6000 workflow: %s; study: %s; GPUs: %s; dry-run: %s\n' "$csb_action" "$csb_study" "$csb_gpus" "$csb_dry_run"
@@ -236,6 +270,7 @@ case "$csb_action" in
   setup) setup ;;
   serving|nsight|profile|report) activate_environment; "$csb_action" ;;
   transfer-models) transfer_models ;;
+  fetch-models) fetch_models ;;
 esac
 if (( csb_dry_run )); then
   printf 'Dry run complete. No commands were executed.\n'

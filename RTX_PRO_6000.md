@@ -12,7 +12,38 @@ All commands below are also packaged in
 executable and stops at the first failing command. Sync the updated checkout
 to the remote host before running it.
 
-If the Q2/Q4 GGUFs still need transferring, run this **on the original machine**:
+The original Q2/Q4 GGUFs were verified on **`xsel02`**, in `/data/home/hys4qm/`.
+If you are logged into **`l2x02`**, pull them into that checkout with:
+
+```bash
+cd /scratch/cloud-serving-benchmark
+./scripts/rtxpro6000_pipeline.sh fetch-models \
+  --source-host hys4qm@xsel02 --source-dir /data/home/hys4qm
+```
+
+The source must be SSH-reachable from the destination; use its full SSH address
+or a configured SSH jump host if the short hostname is unavailable. This action
+checks file existence on the source host and transfers into the local checkout's
+`models/`. It does not require the files to already exist on `l2x02`.
+
+To store the large files on `l2x02`'s NVMe mounted elsewhere, pass that local
+directory with `--model-dir`. For example, **if `/mnt/nvme` is the actual NVMe
+mount**, run on `l2x02`:
+
+```bash
+./scripts/rtxpro6000_pipeline.sh fetch-models \
+  --source-host hys4qm@xsel02 --source-dir /data/home/hys4qm \
+  --model-dir /mnt/nvme/llama70b
+./scripts/rtxpro6000_pipeline.sh all --model-dir /mnt/nvme/llama70b
+```
+
+Replace the example path with the real mount; `findmnt -T /path/to/directory`
+shows which filesystem backs an existing directory. The transfer writes the
+GGUFs into that NVMe directory and creates links in the checkout's `models/`.
+The links do not duplicate the weights onto another disk. If the GGUFs are
+already stored there, skip `fetch-models` and run `all --model-dir` directly.
+
+Alternatively, run this **on `xsel02`**, to push the files to the GPU server:
 
 ```bash
 ./scripts/rtxpro6000_pipeline.sh transfer-models --model-dir /data/home/hys4qm
@@ -20,7 +51,9 @@ If the Q2/Q4 GGUFs still need transferring, run this **on the original machine**
 
 The default destination is `hys4qm@l2x02:/scratch/cloud-serving-benchmark/models/`;
 use `--remote-host` or `--remote-dir` to change it. Transfer is a separate action
-and is never attempted by the remote experiment workflow.
+and is never attempted by `all`. `transfer-models` reads local source files,
+whereas `fetch-models` reads files from `--source-host`. Identical path strings
+on two machines do not imply that their filesystems are shared.
 
 Then **on the remote GPU server**, run:
 
