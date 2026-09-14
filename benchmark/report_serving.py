@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report the selected A100 serving scope from saved evidence, without GPU work."""
+"""Report the declared A100 or RTX PRO 6000 serving scope without GPU work."""
 from __future__ import annotations
 
 import argparse
@@ -8,6 +8,7 @@ import math
 from pathlib import Path
 
 import report_context_study as context
+from cuda_hardware import matches
 
 MODELS = ("1b", "8b", "70b")
 FORMATS = {model: ("IQ1_M", "Q2_K", "Q4_K_M", "Q8_0") + (() if model == "70b" else ("FP16",))
@@ -16,12 +17,18 @@ CONCURRENCIES = (8, 16, 32, 64)
 PROMPTS = (2048, 4096, 8192, 16384)
 
 
-def scope_document(devices):
-    return {"schema_version": 1, "model_formats": {model: list(formats) for model, formats in FORMATS.items()},
+def scope_document(devices, hardware="a100"):
+    scope = {"schema_version": 1, "model_formats": {model: list(formats) for model, formats in FORMATS.items()},
             "device_indices": list(devices), "concurrencies": list(CONCURRENCIES),
             "prompt_lengths": list(PROMPTS), "capacity_lengths": [], "output_tokens": 512,
             "repetitions": 1, "warmup_requests_per_cell": "concurrency",
             "measured_requests_per_cell": "2 * concurrency", "profiling": False}
+    if hardware == "rtxpro6000":
+        scope.update(hardware=hardware, model_formats={"70b": list(FORMATS["70b"])},
+                     concurrencies=[8, 16, 32], capacity_lengths=[32768], extension_request_waves=2)
+    elif hardware != "a100":
+        raise ValueError(f"Unknown serving hardware: {hardware}")
+    return scope
 
 
 def columns(devices):
@@ -32,7 +39,7 @@ def columns(devices):
             *[(f"gpu{device}_peak_vram_gib", f"GPU {device} peak GiB") for device in devices]]
 
 
-def plot_metrics(rows, output, devices):
+def plot_metrics(rows, output, devices, scope=None):
     if not rows:
         return []
     import matplotlib
@@ -40,7 +47,10 @@ def plot_metrics(rows, output, devices):
     import matplotlib.pyplot as plt
     output.mkdir(exist_ok=True)
     artifacts = []
-    for model in MODELS:
+    scope = scope or scope_document(devices)
+    prompts = scope["prompt_lengths"] + scope["capacity_lengths"]
+    concurrencies = scope["concurrencies"]
+    for model, formats in scope["model_formats"].items():
         model_rows = [row for row in rows if row["model"] == model]
         if not model_rows:
             continue
@@ -49,20 +59,22 @@ def plot_metrics(rows, output, devices):
                 ("ttft", "ttft_p95_ms", "TTFT p95 (ms)"),
                 ("tpot", "tpot_p95_ms", "TPOT p95 (ms)"),
                 ("memory", None, "Peak sampled GPU memory (GiB)")):
-            figure, axes = plt.subplots(2, 2, figsize=(11, 8), layout="constrained", squeeze=False)
-            for axis, concurrency in zip(axes.flat, CONCURRENCIES):
-                for index, quant in enumerate(FORMATS[model]):
+            figure, axes = plt.subplots(math.ceil(len(concurrencies) / 2), 2, figsize=(11, 8), layout="constrained", squeeze=False)
+            for axis in list(axes.flat)[len(concurrencies):]:
+                axis.set_visible(False)
+            for axis, concurrency in zip(axes.flat, concurrencies):
+                for index, quant in enumerate(formats):
                     lookup = {row["input_tokens"]: row for row in model_rows
                               if row["concurrency"] == concurrency and row["format"] == quant}
                     metrics = [(f"gpu{gpu}_peak_vram_gib", f"{quant} GPU {gpu}") for gpu in devices] if metric is None else [(metric, quant)]
                     for device_order, (key, legend) in enumerate(metrics):
-                        values = [lookup.get(prompt, {}).get(key) for prompt in PROMPTS]
+                        values = [lookup.get(prompt, {}).get(key) for prompt in prompts]
                         if not any(context.finite(value) for value in values):
                             continue
-                        axis.plot(PROMPTS, [value if context.finite(value) else math.nan for value in values],
+                        axis.plot(prompts, [value if context.finite(value) else math.nan for value in values],
                                   marker="o", linestyle="--" if device_order else "-", color=f"C{index}", label=legend)
                 axis.set_xscale("log", base=2)
-                axis.set_xticks(PROMPTS, labels=("2k", "4k", "8k", "16k"))
+                axis.set_xticks(prompts, labels=[f"{p // 1024}k" for p in prompts])
                 axis.set_xlabel("Input tokens (k = 1024)")
                 axis.set_ylabel(label)
                 axis.set_title(f"{concurrency} clients")
@@ -85,10 +97,13 @@ def build_report(study_root, plots=True):
     root = study_root.resolve()
     scope = context.read_json(root / "serving-scope.json")
     devices = scope.get("device_indices", [])
+    hardware = scope.get("hardware", "a100")
     if (len(devices) not in (1, 2) or len(set(devices)) != len(devices)
             or any(not isinstance(device, str) or not device.isdecimal() for device in devices)
-            or scope != scope_document(devices)):
-        raise ValueError("Missing or incompatible serving-scope.json; use scripts/run_a100_serving.py")
+            or scope != scope_document(devices, hardware)):
+        raise ValueError("Missing or incompatible serving-scope.json; use the hardware serving launcher")
+    if hardware == "rtxpro6000" and len(devices) != 2:
+        raise ValueError("The RTX PRO 6000 publication scope requires two GPUs")
     if not context.shared_layout(root):
         raise ValueError("Expected the launcher's shared results directory")
     roots = context.model_roots(root)
@@ -97,24 +112,27 @@ def build_report(study_root, plots=True):
         raise ValueError("Serving report output must not contain symbolic links")
     output.mkdir(exist_ok=True)
     runtime, capacity = [], []
-    for model in MODELS:
+    for model, formats in scope["model_formats"].items():
         manifest = context.read_evidence_json(root, roots[model] / "manifest.json")
         progress = context.read_evidence_json(root, roots[model] / "progress.json")
         identity_errors = []
         if manifest:
+            if hardware == "rtxpro6000" and any(not matches(d.get("name", ""), hardware) for d in manifest.get("devices", [])):
+                identity_errors.append("Manifest GPU model differs from the declared hardware")
             if [str(device.get("index")) for device in manifest.get("devices", [])] != devices:
                 identity_errors.append("Manifest GPUs differ from the declared serving scope")
             if (manifest.get("llama_cpp_commit") != context.PIN or not manifest.get("binary_sha256")
                     or not manifest.get("code_sha256")):
                 identity_errors.append("Pinned source, binary, or code provenance missing")
-            if (manifest.get("concurrencies") != list(CONCURRENCIES) or manifest.get("prompt_lengths") != list(PROMPTS)
-                    or manifest.get("capacity_lengths") != [] or manifest.get("repetitions") != 1):
+            if (manifest.get("concurrencies") != scope["concurrencies"] or manifest.get("prompt_lengths") != scope["prompt_lengths"]
+                    or manifest.get("capacity_lengths") != scope["capacity_lengths"] or manifest.get("repetitions") != 1
+                    or manifest.get("extension_request_waves", 1) != scope.get("extension_request_waves", 1)):
                 identity_errors.append("Manifest grid differs from the declared serving scope")
-            if {item.get("quant") for item in manifest.get("models", [])} != set(FORMATS[model]):
+            if {item.get("quant") for item in manifest.get("models", [])} != set(formats):
                 identity_errors.append("Manifest formats differ from the declared serving scope")
-        for quant in FORMATS[model]:
-            for concurrency in CONCURRENCIES:
-                for prompt in PROMPTS:
+        for quant in formats:
+            for concurrency in scope["concurrencies"]:
+                for prompt in scope["prompt_lengths"] + scope["capacity_lengths"]:
                     row, runs = context.load_cell(root, model, quant, concurrency, prompt, manifest, progress,
                                                   device_indices=devices)
                     errors = list(identity_errors)
@@ -135,16 +153,17 @@ def build_report(study_root, plots=True):
     context.write_csv(output / "capacity.csv", capacity)
     excluded = sum(row["status"] in context.CAPACITY_STATUSES for row in capacity)
     unresolved = [row for row in capacity if row["status"] not in context.RESOLVED_STATUSES]
-    artifacts = plot_metrics(runtime, output / "plots", devices) if plots else []
+    artifacts = plot_metrics(runtime, output / "plots", devices, scope) if plots else []
     audit = {"schema_version": 1, "generated_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
              "status": "incomplete" if unresolved else "complete", "scope": scope,
              "required_cells": len(capacity), "measured_cells": len(runtime), "capacity_exclusions": excluded,
              "unresolved_cells": unresolved, "plots": artifacts,
              "completion_definition": f"All {len(capacity)} serving cells measured or capacity-excluded; profiling is outside this scope."}
     context.write_json(output / "completion-audit.json", audit)
-    lines = ["# A100 serving metrics", "", f"Status: **{audit['status']}**. {len(runtime)}/{len(capacity)} settings measured; "
+    label = "RTX PRO 6000 Blackwell" if hardware == "rtxpro6000" else "A100"
+    lines = [f"# {label} serving metrics", "", f"Status: **{audit['status']}**. {len(runtime)}/{len(capacity)} settings measured; "
              f"{excluded} capacity-excluded; {len(unresolved)} unresolved.", "",
-             f"{len(devices)} GPU(s), physical indices {', '.join(devices)}. 1B/8B: five formats; 70B: IQ1_M/Q2_K/Q4_K_M/Q8_0.", "",
+             f"{len(devices)} GPU(s), physical indices {', '.join(devices)}. Model/format scope: {scope['model_formats']}.", "",
              "One measured run per setting: C discarded warmup requests and 2C measured requests, exactly 512 output tokens each. "
              "FP16 KV, prompt reuse off. Throughput is aggregate generated tokens divided by the measured HTTP window. "
              "TTFT/TPOT percentiles describe requests within that run; run-to-run variation is unmeasured. "

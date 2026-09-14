@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Collect and plot scalar FP32 operator rooflines on A100 SXM 80GB.
+"""Collect scalar FP32 operator rooflines on A100 SXM 80GB or RTX PRO 6000.
+
+Use --hardware rtxpro6000 for SM120 and ceilings selected from the saved GPU
+edition. A100 remains the default. Both paths use one-GPU, not summed, ceilings.
 
 Select completed 70B serving cells at the same input length and concurrency.
 plan prints commands only; run captures serially; report reads saved captures.
@@ -21,6 +24,7 @@ import sys
 
 import profile_a100_setting as profiler
 from capacity import layer_devices
+from cuda_hardware import HARDWARE, rated_roof
 
 ROOT = Path(__file__).resolve().parents[1]
 DATASHEET = "https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/nvidia-a100-datasheet-nvidia-us-2188504-web.pdf"
@@ -101,8 +105,19 @@ def measured(launch):
 def make_plan(args):
     jobs, cells, formats = [], [], set()
     workload = None
+    hardware = getattr(args, "hardware", "a100")
+    roof = {"hardware": "A100 SXM 80GB", "peak_fp32_flops_per_s": PEAK,
+            "peak_dram_bytes_per_s": BANDWIDTH, "roof_source": DATASHEET, "ceilings_are_per_gpu": True}
     for directory in args.cells:
-        cell, devices = profiler.load_cell(directory)
+        cell, devices = profiler.load_cell(directory, hardware) if hardware != "a100" else profiler.load_cell(directory)
+        if hardware == "rtxpro6000":
+            gpu_rows = profiler.validate_rtx_cell(cell, devices)
+            roofs = [rated_roof(d["name"]) for d in gpu_rows]
+            if any(item != roofs[0] for item in roofs):
+                raise ValueError("Use the same GPU edition on both devices for this comparison")
+            if cells and roofs[0] != roof:
+                raise ValueError("Source cells have different GPU editions")
+            roof = roofs[0]
         quant = cell["quantization"]
         if (cell.get("model_family") != "Llama-3.3-70B-Instruct" or cell.get("model", {}).get("layers") != 80
                 or quant not in ("IQ1_M", "Q2_K", "Q4_K_M", "Q8_0")):
@@ -136,15 +151,16 @@ def make_plan(args):
                                "--kernel-regex", "flash_attn" if operator == "flash_attention" else "mul_mat|gemm|gemv|mma",
                                "--launch-count", str(args.launch_count), "--output", str(args.output / relative),
                                "--diagnostic-server", str(args.diagnostic_server.resolve()), "--ncu", args.ncu]
+                    if hardware != "a100":
+                        command += ["--hardware", hardware]
                     jobs.append({"format": quant, "phase": phase, "gpu": gpu, "physical_gpu": devices[gpu],
                                  "operator": operator, "capture": str(relative), "command": command})
-    return {"schema_version": 1, "hardware": "A100 SXM 80GB", "source_cells": cells,
+    return {"schema_version": 1, "hardware_family": hardware, "source_cells": cells,
             "concurrency": workload[0], "prompt_tokens": workload[1], "devices": workload[2],
             "output_tokens": 512, "phases": args.phases, "operators": args.operators,
             "launch_cap_per_operator_phase_gpu": args.launch_count,
             "warmup_requests_per_capture": workload[0], "profiled_requests_per_capture": workload[0],
-            "peak_fp32_flops_per_s": PEAK, "peak_dram_bytes_per_s": BANDWIDTH,
-            "roof_source": DATASHEET, "ceilings_are_per_gpu": True, "jobs": jobs}
+            **roof, "jobs": jobs}
 
 
 def export_values(output, plan):
@@ -158,6 +174,8 @@ def export_values(output, plan):
                     or metadata.get("counter_status") != "collected"):
                 raise ValueError("Capture did not pass profiler validation")
             source_cell = next(cell for cell in plan["source_cells"] if cell["format"] == job["format"])
+            if hashlib.sha256(Path(source_cell["path"]).read_bytes()).hexdigest() != source_cell["sha256"]:
+                raise ValueError("Source serving cell changed after capture planning")
             settings = marker.get("settings", {})
             expected_filter = f"regex:csb_batch:phase={job['phase']}:.*/*/{operation_regex(job['operator'])}"
             if (marker.get("source_cell") != source_cell["path"]
@@ -270,14 +288,16 @@ def plot_values(output, plan, points):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", nargs="?", choices=("plan", "run", "report"), default="plan")
+    parser.add_argument("--hardware", choices=HARDWARE, default="a100")
     parser.add_argument("--cells", nargs="+", type=Path, help="Completed serving cell directories, one per format")
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--operators", nargs="+", choices=tuple(OPERATORS), default=list(OPERATORS))
     parser.add_argument("--phases", nargs="+", choices=("prefill", "decode"), default=["prefill", "decode"])
     parser.add_argument("--launch-count", type=int, default=5, help="Maximum launches per operator/phase/GPU capture")
-    parser.add_argument("--diagnostic-server", type=Path, default=ROOT / ".run/a100-profile-build/baseline/llama-server")
+    parser.add_argument("--diagnostic-server", type=Path)
     parser.add_argument("--ncu", default=profiler.os.environ.get("NCU_BIN", "ncu"))
     args = parser.parse_args()
+    args.diagnostic_server = args.diagnostic_server or ROOT / f".run/{args.hardware}-profile-build/baseline/llama-server"
     args.output = args.output.resolve()
     if args.action == "report":
         plan = read(args.output / "roofline-plan.json")
@@ -293,9 +313,12 @@ def main():
         # Rated ceilings are valid for this exact hardware; never reuse A6000 constants.
         names = subprocess.check_output(["nvidia-smi", "-i", ",".join(plan["devices"]),
                                          "--query-gpu=name", "--format=csv,noheader"], text=True).splitlines()
-        if len(names) != len(plan["devices"]) or any(not re.search(r"A100.*SXM.*80GB", name) for name in names):
-            raise ValueError(f"Expected A100 SXM 80GB GPUs for the rated ceilings; received {names}")
-        profiler.validate_build(args.diagnostic_server.resolve())
+        if args.hardware == "a100":
+            if len(names) != len(plan["devices"]) or any(not re.search(r"A100.*SXM.*80GB", name) for name in names):
+                raise ValueError(f"Expected A100 SXM 80GB GPUs for the rated ceilings; received {names}")
+        elif len(names) != len(plan["devices"]) or any(rated_roof(name)["hardware"] != plan["hardware"] for name in names):
+            raise ValueError("Actual GPU edition differs from the saved serving hardware")
+        profiler.validate_build(args.diagnostic_server.resolve(), args.hardware)
         profiler.validate_sections(args.ncu, ["InstructionStats"])
         path = args.output / "roofline-plan.json"
         if path.exists() and read(path) != plan:

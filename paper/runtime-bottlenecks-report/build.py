@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Create a report and actual-value figures from saved full-section captures."""
 from pathlib import Path
+import argparse
 import csv
 import hashlib
 import json
@@ -28,7 +29,6 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Image, Spacer, PageBreak, KeepTogether
 
 FIGURES = HERE / 'figures'
-FIGURES.mkdir(exist_ok=True)
 Q4, Q2 = 'Q4_K_M', 'Q2_K'
 PALETTE = {Q4: '#2a9d8f', Q2: '#8b5fbf'}
 INK, MUTED, GRID = '#142c43', '#526274', '#e0e6ec'
@@ -39,13 +39,20 @@ def read_csv(path):
         return list(csv.DictReader(stream))
 
 
-COUNTERS = read_csv(SOURCE / 'all-hardware-metrics.csv')
-ROOFS = read_csv(SOURCE / 'roofline-values.csv')
-OPERATOR_POINTS = read_csv(SOURCE / 'operator-roofline-points.csv')
-OPERATOR_VALIDATION = json.loads((SOURCE / 'operator-roofline-validation.json').read_text())
-OPCODES = [r for r in read_csv(SOURCE / 'instruction-instances.csv')
-           if r['metric'] == 'sass__inst_executed_per_opcode']
-LOOKUP = {(r['phase'], int(r['gpu']), r['format'], r['metric']): r for r in COUNTERS}
+COUNTERS, ROOFS, OPERATOR_POINTS, OPCODES = [], [], [], []
+OPERATOR_VALIDATION, LOOKUP = {}, {}
+
+
+def load_historical_data():
+    global COUNTERS, ROOFS, OPERATOR_POINTS, OPERATOR_VALIDATION, OPCODES, LOOKUP
+    FIGURES.mkdir(exist_ok=True)
+    COUNTERS = read_csv(SOURCE / 'all-hardware-metrics.csv')
+    ROOFS = read_csv(SOURCE / 'roofline-values.csv')
+    OPERATOR_POINTS = read_csv(SOURCE / 'operator-roofline-points.csv')
+    OPERATOR_VALIDATION = json.loads((SOURCE / 'operator-roofline-validation.json').read_text())
+    OPCODES = [r for r in read_csv(SOURCE / 'instruction-instances.csv')
+               if r['metric'] == 'sass__inst_executed_per_opcode']
+    LOOKUP = {(r['phase'], int(r['gpu']), r['format'], r['metric']): r for r in COUNTERS}
 METRICS = {
     'time': ('gpu__time_duration.sum', 1e6, 'Kernel duration (ms)', 3),
     'instructions': ('sm__inst_executed.sum', 1e6, 'Executed instructions (M)', 3),
@@ -733,6 +740,19 @@ def bundle():
 
 
 if __name__=='__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--study-root', type=Path, help='Build a new RTX PRO 6000 report from this study')
+    parser.add_argument('--captures', type=Path, help='RTX capture root; default: STUDY/profiles/c8-p2048')
+    parser.add_argument('--output', type=Path, help='Separate output directory; default beneath the RTX study')
+    args = parser.parse_args()
+    if args.study_root:
+        sys.path.insert(0, str(ROOT / 'benchmark'))
+        from rtxpro6000_publication import build_bottlenecks
+        print(build_bottlenecks(args.study_root, args.captures or args.study_root / 'profiles/c8-p2048', args.output))
+        sys.exit(0)
+    if args.output or args.captures:
+        parser.error('--output and --captures require --study-root')
+    load_historical_data()
     plt.rcParams.update({'font.family':'DejaVu Sans','font.size':10,'axes.spines.top':False,
                          'axes.spines.right':False,'pdf.fonttype':42,'svg.fonttype':'none'})
     validation=json.loads((SOURCE/'validation.json').read_text())

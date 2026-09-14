@@ -1,5 +1,10 @@
 # Runtime Cost poster figures — Llama 70B
 
+For new measurements on two RTX PRO 6000 96 GB GPUs, follow the
+[RTX runbook](../../RTX_PRO_6000.md), then use
+`python3 paper/poster/build.py --study-root results/YOUR_STUDY`.
+That route covers 2K–32K and writes separate figures beneath the study directory.
+
 The two main exports use **Llama-3.3-70B-Instruct only**, on two RTX A6000 GPUs:
 
 - **Merged, two panels:** [PDF](runtime-cost-merged.pdf) · [PNG](runtime-cost-merged.png) · [editable SVG](runtime-cost-merged.svg) · [values and provenance](merged-data.json).

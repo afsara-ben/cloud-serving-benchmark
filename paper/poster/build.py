@@ -5,6 +5,7 @@ import csv
 import hashlib
 import json
 from pathlib import Path
+import sys
 
 import matplotlib
 matplotlib.use("Agg")
@@ -741,7 +742,18 @@ if __name__ == "__main__":
                         help="Also render a separate, explicitly synthetic 70B 64K illustration.")
     parser.add_argument("--allow-missing", action="store_true",
                         help="Render available 70B measurements with explicit missing-value labels.")
+    parser.add_argument("--study-root", type=Path, help="Build a new RTX PRO 6000 poster from this validated serving scope")
+    parser.add_argument("--output", type=Path, help="Separate output directory for --study-root; default beneath that study")
     args = parser.parse_args()
+    if args.study_root:
+        if args.layout != "four" or args.include_illustration:
+            parser.error("The RTX study builder supports --layout four without synthetic illustrations")
+        sys.path.insert(0, str(ROOT / "benchmark"))
+        from rtxpro6000_publication import build_poster
+        print(build_poster(args.study_root, args.output, args.allow_missing))
+        sys.exit(0)
+    if args.output:
+        parser.error("--output requires --study-root")
     if args.layout != "four" and args.include_illustration:
         parser.error("The separate 64K illustration belongs to --layout four.")
     theme()

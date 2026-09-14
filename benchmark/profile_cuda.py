@@ -156,7 +156,12 @@ def validate_counter_capture(summary: dict, metrics: str | list[str], sections: 
             if section not in SECTION_REQUIREMENTS:
                 section_missing[section].add("unregistered_section_requirements")
                 continue
-            section_missing[section].update(name for name in SECTION_REQUIREMENTS[section] if not available(name))
+            # Blackwell's hierarchical charts include shared-memory traffic in
+            # the L1/TEX writeback metric (mem_lgds); retain its native name.
+            def section_available(name):
+                return available(name) or ("lsu_writeback_active_mem_lg." in name and
+                    available(name.replace("_mem_lg.", "_mem_lgds.")))
+            section_missing[section].update(name for name in SECTION_REQUIREMENTS[section] if not section_available(name))
             if section == ROOFLINE_SECTIONS["tensor"]:
                 # Require work and its corresponding precision-specific ceiling.
                 # A zero work count is valid; a missing work count is not zero.

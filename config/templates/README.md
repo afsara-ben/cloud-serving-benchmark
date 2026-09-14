@@ -7,3 +7,7 @@ checkpoint's embedded template adds knowledge/date metadata to ordinary system
 messages (20 extra tokens in the checked request). The shared template preserves
 the existing study's Llama 3 role formatting and makes input rendering comparable.
 No comments or extra newlines were added to the Jinja text itself.
+
+The RTX PRO 6000 launcher also assigns this shared Llama 3 role template to
+all four Llama 3.3 70B formats. Its new series records the template hash; the
+publication validation compares actual input hashes across formats.

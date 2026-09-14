@@ -1,0 +1,5 @@
+numpy
+matplotlib
+reportlab
+Markdown
+huggingface_hub

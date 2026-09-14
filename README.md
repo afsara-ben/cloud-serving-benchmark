@@ -24,6 +24,10 @@ run, no profiling, no long-context extensions, and no 70B FP16.
 For the full Nsight section suite and optional precision-specific rooflines,
 use [one-setting A100 profiling](A100_PROFILING.md) after the serving measurement.
 
+For **two RTX PRO 6000 96 GB GPUs**, use the [70B figure workflow](RTX_PRO_6000.md).
+It covers the four quantization formats, 8/16/32 clients and 2K through 32K
+inputs, plus matched Nsight captures and separate poster/report exports.
+
 For **AMD MI300X**, use the separate [MI300X pipeline](MI300X_PIPELINE.md):
 `bash scripts/mi300x_paper_pipeline.sh` runs the 70B serving sweep, matched
 prefill/decode counter captures, four-panel poster and runtime bottlenecks report.

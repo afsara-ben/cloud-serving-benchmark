@@ -358,6 +358,7 @@ def run_context_study(args, cfg, resolved, backend, devices, config_file):
     if changes:
         raise RuntimeError(f"Context study controls differ: {changes}")
     concurrent, prompts, extension = context_arguments(args)
+    extension_waves = getattr(args, "extension_request_waves", 1)
     split_text = cfg.get("SERVER_TENSOR_SPLIT") or ",".join("1" for _ in devices)
     split = [float(v) for v in split_text.split(",")]
     if len(split) != len(devices) or any(v <= 0 for v in split):
@@ -388,7 +389,7 @@ def run_context_study(args, cfg, resolved, backend, devices, config_file):
         print(json.dumps({"context_study": True, "model_family": family, "manifest": str(args.manifest),
                           "output": str(output), "binary": str(binary), "devices": devices,
                           "models": manifest, "cells": cells, "repetitions": args.repetitions,
-                          "serving_requests_per_repetition": "2 * concurrency", "extension_requests_per_repetition": "concurrency",
+                          "serving_requests_per_repetition": "2 * concurrency", "extension_requests_per_repetition": f"{extension_waves} * concurrency",
                           "discarded_warmup": "concurrency requests before the first measurement of each cell",
                           "capacity_screen": "Per-device GGUF weights + FP16 KV + 2 GiB headroom; observed buffers checked after startup",
                           "downloads": "Runner never downloads; absent FP16 is screened from manifest metadata"}, indent=2))
@@ -420,6 +421,8 @@ def run_context_study(args, cfg, resolved, backend, devices, config_file):
                 "devices": [{k: v for k, v in d.items() if k not in ("free_bytes", "used_bytes")} for d in hardware],
                 "runtime_options": {k: v for k, v in env.items() if k.startswith(("GGML_", "CUDA_")) or k == "OMP_NUM_THREADS"},
                 "headroom_bytes_per_gpu": 2 * GIB}
+    if extension_waves != 1:
+        identity["extension_request_waves"] = extension_waves
     fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
     output.mkdir(parents=True, exist_ok=True)
     progress_path = output / "progress.json"
@@ -459,7 +462,7 @@ def run_context_study(args, cfg, resolved, backend, devices, config_file):
         key = f"{quant}/c{concurrency}/p{prompt}"
         folder = output / key
         folder.mkdir(parents=True, exist_ok=True)
-        count = (2 if entry["experiment"] == "serving_grid" else 1) * concurrency
+        count = (2 if entry["experiment"] == "serving_grid" else extension_waves) * concurrency
         pending = [r for r in range(1, args.repetitions + 1) if not (
             progress["cells"].get(f"{key}/r{r}", {}).get("status") == "complete"
             and check_raw(folder / f"r{r}/raw.json", count, concurrency, prompt))]
@@ -598,6 +601,8 @@ def main():
     parser.add_argument("--concurrencies", default="8,16,32,64")
     parser.add_argument("--prompt-lengths", default="2048,4096,8192,16384")
     parser.add_argument("--capacity-lengths", default="32768,65536", help="Comma-separated power-of-two extension inputs; empty disables extension.")
+    parser.add_argument("--extension-request-waves", type=int, choices=(1, 2), default=1,
+                        help="Measured request waves for capacity extensions; use 2 for a matched serving comparison. Part of resume identity.")
     parser.add_argument("--only-cell", action="append", default=[], metavar="FORMAT/cCLIENTS/pTOKENS",
                         help="Execute only this context-study cell; repeat to select more. Keeps the full grid's resume identity.")
     parser.add_argument("--repetitions", type=int, default=3)

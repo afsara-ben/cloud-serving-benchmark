@@ -336,7 +336,10 @@ def load_cell(root, family, quant, concurrency, prompt, manifest, progress, devi
     folder = model_roots(root)[family] / key
     document = read_evidence_json(root, folder / "cell.json")
     experiment = "serving_grid" if prompt in PROMPTS else "capacity_extension"
-    requested = concurrency * (2 if experiment == "serving_grid" else 1)
+    waves = manifest.get("extension_request_waves", 1)
+    if type(waves) is not int or waves not in (1, 2):
+        raise ValueError("Invalid extension request budget in producer manifest")
+    requested = concurrency * (2 if experiment == "serving_grid" else waves)
     row = {"model": family, "format": quant, "concurrency": concurrency,
            "input_tokens": prompt, "output_tokens": OUTPUT_TOKENS, "experiment": experiment,
            "status": document.get("status", "missing"), "validated_repetitions": 0,
