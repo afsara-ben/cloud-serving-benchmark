@@ -10,4 +10,5 @@ results/*.json
 __pycache__/
 *.pyc
 .venv-a100-serving/
+.venv-rtxpro6000/
 tmp/

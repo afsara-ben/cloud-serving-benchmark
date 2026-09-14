@@ -26,6 +26,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -74,6 +75,17 @@ def run_command(argv, environment):
     subprocess.run(list(map(str, argv)), cwd=ROOT, env=environment, check=True)
 
 
+def check_build_tools(environment):
+    required = ("git", "cmake", "ninja", "c++", "nvcc", "curl", "flock")
+    missing = [name for name in required if not shutil.which(name, path=environment.get("PATH"))]
+    if missing:
+        raise ValueError("Missing build prerequisites: " + ", ".join(missing) + ". "
+                         "Install CMake/Ninja in the active environment with "
+                         "python3 -m pip install -r scripts/requirements-rtxpro6000.txt. "
+                         "Load the site's CUDA/compiler modules for nvcc/c++; see RTX_PRO_6000.md. "
+                         "Run the gguf-py install only after build succeeds.")
+
+
 def check_devices(devices, environment, idle=False, hardware="a100"):
     result = subprocess.check_output(["nvidia-smi", "-i", ",".join(devices), "--query-gpu=name", "--format=csv,noheader"],
                                      env=environment, text=True)
@@ -100,7 +112,7 @@ def preparation_entries(model, hardware="a100"):
         source = ROOT / "models" / f"study-manifest-{model}.json"
     entries = json.loads(source.read_text())
     indexed = {entry["quant"]: entry for entry in entries}
-    prepared = []
+    prepared, missing = [], []
     for quant in report.FORMATS[model]:
         entry = dict(indexed[quant])
         local = ROOT / "models" / entry["filename"]
@@ -113,8 +125,12 @@ def preparation_entries(model, hardware="a100"):
             # date/system preambles changing inputs across the four formats.
             entry["chat_template_file"] = "config/templates/llama-3.1-benchmark.jinja"
         if not path.is_file() and not entry.get("repo"):
-            raise ValueError(f"Copy the existing {model} {quant} GGUF to {local}. Its original upstream source is not recorded.")
+            missing.append(str(local))
         prepared.append(entry)
+    if missing:
+        raise ValueError("Copy the existing GGUF files to these paths before prepare:\n  " +
+                         "\n  ".join(missing) + "\nTheir original upstream sources are not recorded; "
+                         "prepare cannot download substitutes.")
     return prepared
 
 
@@ -209,6 +225,8 @@ def main(default_hardware="a100"):
                           "execution_order": list(selected), "inference_executed": False}, indent=2))
         return
     if args.action == "build":
+        if args.hardware == "rtxpro6000":
+            check_build_tools(environment)
         check_devices(devices, environment, idle=True, hardware=args.hardware)
         run_command(["bash", "scripts/01_build_llama_cpp.sh"], environment)
         return

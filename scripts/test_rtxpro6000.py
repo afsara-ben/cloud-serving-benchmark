@@ -140,6 +140,40 @@ def make_captures(root, prompt=2048):
 
 
 class RTXWorkflowTests(unittest.TestCase):
+    def test_missing_build_tools_stop_before_gpu_checks_or_build(self):
+        def available(name, **kwargs):
+            return None if name in ("ninja", "cmake") else "/synthetic/bin/" + name
+        with patch.object(sys, "argv", ["run_rtxpro6000.py", "build"]), \
+                patch.object(launcher.shutil, "which", side_effect=available), \
+                patch.object(launcher, "check_devices") as gpu, patch.object(launcher, "run_command") as build:
+            with self.assertRaisesRegex(ValueError, "Missing build prerequisites: cmake, ninja"):
+                launcher.main(default_hardware="rtxpro6000")
+            gpu.assert_not_called()
+            build.assert_not_called()
+
+    def test_preparation_lists_both_missing_local_models(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            entries = [{"quant": q, "filename": q + ".gguf"} for q in serving.FORMATS["70b"]]
+            for entry in entries:
+                if entry["quant"] in ("IQ1_M", "Q8_0"):
+                    entry["repo"] = "synthetic-download-source"
+            put(root / "models/study-manifest-70b.json", entries)
+            with patch.object(launcher, "ROOT", root), self.assertRaises(ValueError) as caught:
+                launcher.preparation_entries("70b", "rtxpro6000")
+            message = str(caught.exception)
+            self.assertIn(str(root / "models/Q2_K.gguf"), message)
+            self.assertIn(str(root / "models/Q4_K_M.gguf"), message)
+            self.assertIn("cannot download substitutes", message)
+
+    def test_missing_ncu_explains_that_serving_can_proceed(self):
+        with patch.object(sys, "argv", ["profile_rtxpro6000.py", "preflight", "--ncu", "/missing/ncu"]), \
+                patch.object(pipeline, "check_devices"), patch.object(pipeline.shutil, "which", return_value=None), \
+                patch.object(pipeline.subprocess, "run") as probe:
+            with self.assertRaisesRegex(ValueError, "serving build/prepare/run can proceed without Nsight"):
+                pipeline.main()
+            probe.assert_not_called()
+
     def test_remote_preparation_relocates_models_without_rewriting_original_manifest(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

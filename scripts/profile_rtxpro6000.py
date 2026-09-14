@@ -81,7 +81,11 @@ def main():
         check_devices(devices, os.environ, idle=True, hardware="rtxpro6000")
         ncu = shutil.which(args.ncu)
         if not ncu:
-            raise ValueError("Install the full Nsight Compute package and set NCU_BIN")
+            raise ValueError(f"Nsight Compute executable not found: {args.ncu!r}. "
+                             "Load the site's Nsight Compute module, or install the full package "
+                             "using RTX_PRO_6000.md, then export NCU_BIN=/absolute/path/to/ncu. "
+                             "NCU_BIN must name the executable, not its directory. "
+                             "This preflight is needed for profiling; serving build/prepare/run can proceed without Nsight.")
         extras = Path(ncu).resolve().parent / "extras/python"
         if not list(extras.glob("ncu_report*")):
             raise ValueError(f"Nsight Python Report Interface missing: {extras}")

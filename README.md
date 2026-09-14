@@ -25,6 +25,8 @@ For the full Nsight section suite and optional precision-specific rooflines,
 use [one-setting A100 profiling](A100_PROFILING.md) after the serving measurement.
 
 For **two RTX PRO 6000 96 GB GPUs**, use the [70B figure workflow](RTX_PRO_6000.md).
+Run `./scripts/rtxpro6000_pipeline.sh all` for the full workflow, or add
+`--dry-run` to preview its commands.
 It covers the four quantization formats, 8/16/32 clients and 2K through 32K
 inputs, plus matched Nsight captures and separate poster/report exports.
 

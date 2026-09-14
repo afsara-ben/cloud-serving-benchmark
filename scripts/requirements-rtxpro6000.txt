@@ -1,3 +1,5 @@
+cmake>=3.28
+ninja
 numpy
 matplotlib
 reportlab

@@ -5,6 +5,56 @@ and Runtime Bottlenecks report, including 32K inputs. It writes new figures
 under the selected results series. The existing A6000 PDFs remain historical
 artifacts.
 
+## Executable workflow
+
+All commands below are also packaged in
+[`scripts/rtxpro6000_pipeline.sh`](scripts/rtxpro6000_pipeline.sh), which is
+executable and stops at the first failing command. Sync the updated checkout
+to the remote host before running it.
+
+If the Q2/Q4 GGUFs still need transferring, run this **on the original machine**:
+
+```bash
+./scripts/rtxpro6000_pipeline.sh transfer-models --model-dir /data/home/hys4qm
+```
+
+The default destination is `hys4qm@l2x02:/scratch/cloud-serving-benchmark/models/`;
+use `--remote-host` or `--remote-dir` to change it. Transfer is a separate action
+and is never attempted by the remote experiment workflow.
+
+Then **on the remote GPU server**, run:
+
+```bash
+cd /scratch/cloud-serving-benchmark
+./scripts/rtxpro6000_pipeline.sh all --dry-run  # Preview; no changes or GPU work.
+./scripts/rtxpro6000_pipeline.sh all            # Execute the complete workflow.
+```
+
+`all` checks the local Q2/Q4 files, creates/activates `.venv-rtxpro6000`, installs
+dependencies including Ninja and CMake, builds the pinned SM120 server, prepares
+models, runs the serving pilots/sweep/poster, locates or installs full Nsight,
+probes counters, builds the annotated server, and runs the profiling
+pilots/campaigns/reports at 2K and 32K. GPU runs are serial. If Q2/Q4 are already
+elsewhere on the remote filesystem, pass `--model-dir /path/to/GGUFs`; setup
+links them into `models/` and preparation verifies their hashes.
+
+Individual actions avoid repeating earlier stages:
+
+```bash
+./scripts/rtxpro6000_pipeline.sh setup
+./scripts/rtxpro6000_pipeline.sh serving
+./scripts/rtxpro6000_pipeline.sh nsight
+./scripts/rtxpro6000_pipeline.sh profile
+./scripts/rtxpro6000_pipeline.sh report
+```
+
+Use `--study-name YOUR_SERIES` consistently for independent experiments; the
+default is `cuda-context-study-rtxpro6000-r1` (or the exported `STUDY_NAME`).
+Use `--gpus 2,3` for different physical indices. Export `NCU_BIN` to select an
+existing profiler, and `CUDA_HOME` if the compiler requires a site-specific
+toolkit path. Drivers, CUDA itself and system counter permissions remain host
+prerequisites. Run `./scripts/rtxpro6000_pipeline.sh --help` for all options.
+
 The scripts have CPU validation and synthetic PDF rendering coverage. Actual
 SM120 compilation, model capacity and Nsight captures must pass the pilots on
 the destination machine before a full campaign is warranted.
@@ -45,7 +95,9 @@ clones the pinned llama.cpp source if `vendor/llama.cpp` is absent.
 
 The host needs Linux, Python 3.10+, Git, CMake, Ninja, a C++ compiler, curl,
 flock, a working NVIDIA driver, and a CUDA toolkit that supports SM120
-(CUDA 12.8 or newer). Install the **full Nsight Compute package**, including
+(CUDA 12.8 or newer). The requirements file installs CMake and Ninja inside the
+Python environment, without sudo. Load site compiler/CUDA modules if `c++` or
+`nvcc` is not on `PATH`. Install the **full Nsight Compute package**, including
 its `extras/python/ncu_report*` interface, and NVTX3 headers. The counter probe
 below tests the installed driver/profiler combination and counter permissions.
 Nsight Systems is only needed for an optional trace, not this campaign.
@@ -66,7 +118,8 @@ useful starting point, not a bound on the eventual capture size).
 
 Run the following in one remote shell, on an otherwise idle GPU allocation.
 Use `tmux` or an equivalent persistent session for the long stages. Change the
-checkout path if necessary. Ensure the desired `nvcc` and `ncu` are on `PATH`.
+checkout path if necessary (for example `/scratch/cloud-serving-benchmark`).
+Ensure the desired `nvcc` is on `PATH`; Nsight is configured in step 3.
 
 ```bash
 cd ~/cloud-serving-benchmark
@@ -75,22 +128,16 @@ python3 -m venv .venv-rtxpro6000
 source .venv-rtxpro6000/bin/activate
 python3 -m pip install -r scripts/requirements-rtxpro6000.txt
 
-command -v nvcc ncu
+command -v git cmake ninja c++ nvcc curl flock
 export CUDA_HOME="$(dirname "$(dirname "$(readlink -f "$(command -v nvcc)")")")"
-export NCU_BIN="$(readlink -f "$(command -v ncu)")"
 export STUDY_NAME=cuda-context-study-rtxpro6000-r1
 study_root="results/$STUDY_NAME"
 
 nvidia-smi --query-gpu=index,name,uuid,memory.total,compute_cap --format=csv
 nvcc --version
-"$NCU_BIN" --version
-
-# Tiny real counter probe on each GPU; no Llama model is loaded.
-python3 scripts/profile_rtxpro6000.py preflight --gpus 0,1
-
 # Unmodified serving server, pinned revision, compiled for SM120.
-python3 scripts/run_rtxpro6000.py build --gpus 0,1
-python3 -m pip install -e vendor/llama.cpp/gguf-py
+python3 scripts/run_rtxpro6000.py build --gpus 0,1 &&
+python3 -m pip install -e vendor/llama.cpp/gguf-py &&
 python3 scripts/run_rtxpro6000.py prepare --gpus 0,1
 ```
 
@@ -100,9 +147,27 @@ model paths. All four formats explicitly use the same Llama 3 role template,
 Llama 3.3 and its hash is recorded. Input hashes are checked across formats.
 The original study manifest is preserved.
 
-If the counter probe fails, resolve its reported installation or driver
-permission problem before profiling. Unprofiled serving can be run independently
-of Nsight. The scripts do not change system counter permissions.
+If `ninja` was missing in an earlier setup, rerun the requirements installation.
+The vendor checkout is created by `build`, after its prerequisite checks. An
+editable `gguf-py` installation attempted after a failed build will fail because
+the project directory has not been created; retry it only after a successful
+build. The `&&` chain above prevents those dependent steps from running after
+a failure, even if the shell does not have `set -e` enabled.
+
+The exact Q2 and Q4 originals exist in `/data/home/hys4qm/` on the source host.
+For the `/scratch` remote checkout, first run `mkdir -p models` in that checkout.
+Then, **from the original source host** (where `l2x02` is SSH-reachable):
+
+```bash
+rsync -avP \
+  /data/home/hys4qm/Llama-3.3-70B-Instruct-Q2_K.gguf \
+  /data/home/hys4qm/Llama-3.3-70B-Instruct-Q4_K_M.gguf \
+  hys4qm@l2x02:/scratch/cloud-serving-benchmark/models/
+```
+
+If the compute node is not directly reachable, use the cluster transfer/login
+host that provides access to the same destination filesystem. If these files
+are already on the remote host, copy or link them into `models/` instead.
 
 ## 2. Serving pilots, sweep and Runtime Cost poster
 
@@ -163,12 +228,48 @@ Neither an exclusion nor an unfinished setting becomes a zero-valued plot point.
 
 ## 3. Diagnostic build and Runtime Bottlenecks captures
 
+Nsight is needed for this stage only. If a full installation already exists,
+load the site's Nsight Compute module or set `NCU_BIN` to its executable, e.g.
+`/opt/nvidia/nsight-compute/VERSION/ncu`. Check common install locations with:
+
+```bash
+find /opt/nvidia /usr/local "$HOME/.local/opt" -name ncu -type f 2>/dev/null || true
+```
+
+If no installation is available, NVIDIA provides a full
+[Linux x86_64 redistribution archive](https://developer.download.nvidia.com/compute/cuda/redist/nsight_compute/linux-x86_64/).
+On an x86_64 server, unpack it into your account without sudo:
+
+```bash
+(
+  set -euo pipefail
+  test "$(uname -m)" = x86_64
+  csb_ncu_archive=nsight_compute-linux-x86_64-2026.3.0.13-archive
+  csb_ncu_prefix="$HOME/.local/opt/nvidia"
+  mkdir -p "$csb_ncu_prefix"
+  curl -fL --retry 3 -C - \
+    "https://developer.download.nvidia.com/compute/cuda/redist/nsight_compute/linux-x86_64/$csb_ncu_archive.tar.xz" \
+    -o "$csb_ncu_prefix/$csb_ncu_archive.tar.xz"
+  tar -xJf "$csb_ncu_prefix/$csb_ncu_archive.tar.xz" -C "$csb_ncu_prefix"
+  "$csb_ncu_prefix/$csb_ncu_archive/ncu" --version
+)
+export NCU_BIN="$HOME/.local/opt/nvidia/nsight_compute-linux-x86_64-2026.3.0.13-archive/ncu"
+```
+
+The archive is about 380 MiB compressed and includes the Python Report
+Interface. This installs the profiler in your account; it does not update the
+driver or change counter permissions. If the following counter probe reports a
+driver or permission failure, resolve that reported problem before profiling.
+
 Run after the serving cells have completed. Both Q4_K_M and Q2_K at C8 and the
 selected context must pass independent serving validation before even the
 single-capture pilot starts. Captures reuse the saved physical GPU selection;
 both GPUs stay visible, with one logical GPU's counters selected at a time.
 
 ```bash
+# Tiny real counter probe on each GPU; no Llama model is loaded.
+python3 scripts/profile_rtxpro6000.py preflight --gpus 0,1
+
 # Separate annotated server and libraries; the serving build remains the source
 # of the unprofiled timing measurements.
 python3 benchmark/matrix_diagnostic.py build --server --cuda-arch 120 \
