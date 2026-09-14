@@ -153,10 +153,12 @@ class RTXWorkflowTests(unittest.TestCase):
     def test_two_format_shard_scope_builds_report_after_first_pilot(self):
         with tempfile.TemporaryDirectory() as directory:
             root = make_study(Path(directory), prompts=(2048,), formats=("IQ1_M", "Q8_0"))
+            (root / "70b/Q8_0/c8/p2048/r1/raw.json").unlink()
             audit = serving.build_report(root, plots=False)
             self.assertEqual(audit["scope"]["model_formats"], {"70b": ["IQ1_M", "Q8_0"]})
             self.assertEqual(audit["required_cells"], 30)
-            self.assertEqual(audit["measured_cells"], 2)
+            self.assertEqual(audit["measured_cells"], 1)
+            self.assertEqual(audit["status"], "incomplete")
 
     def test_git_export_splits_serving_and_profile_types_per_format(self):
         with tempfile.TemporaryDirectory() as directory:
