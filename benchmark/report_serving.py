@@ -31,6 +31,22 @@ def scope_document(devices, hardware="a100"):
     return scope
 
 
+def compatible_scope(scope, devices, hardware):
+    """Require the canonical scope, allowing an RTX run to declare a format shard."""
+    expected = scope_document(devices, hardware)
+    if hardware == "rtxpro6000":
+        model_formats = scope.get("model_formats")
+        if not isinstance(model_formats, dict) or set(model_formats) != {"70b"}:
+            return False
+        formats = model_formats["70b"]
+        canonical = expected["model_formats"]["70b"]
+        if (not isinstance(formats, list) or not formats
+                or formats != [quant for quant in canonical if quant in formats]):
+            return False
+        expected["model_formats"] = {"70b": formats}
+    return scope == expected
+
+
 def columns(devices):
     return [("model", "Model"), ("format", "Format"), ("concurrency", "Clients"), ("input_tokens", "Input tokens"),
             ("ttft_p50_ms", "TTFT p50 ms"), ("ttft_p95_ms", "TTFT p95 ms"),
@@ -100,7 +116,7 @@ def build_report(study_root, plots=True):
     hardware = scope.get("hardware", "a100")
     if (len(devices) not in (1, 2) or len(set(devices)) != len(devices)
             or any(not isinstance(device, str) or not device.isdecimal() for device in devices)
-            or scope != scope_document(devices, hardware)):
+            or not compatible_scope(scope, devices, hardware)):
         raise ValueError("Missing or incompatible serving-scope.json; use the hardware serving launcher")
     if hardware == "rtxpro6000" and len(devices) != 2:
         raise ValueError("The RTX PRO 6000 publication scope requires two GPUs")

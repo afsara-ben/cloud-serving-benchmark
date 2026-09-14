@@ -31,17 +31,19 @@ from test_report_context_study import fixture, put
 GPU = "NVIDIA RTX PRO 6000 Blackwell Server Edition"
 
 
-def make_study(base, prompts=(2048, 32768)):
+def make_study(base, prompts=(2048, 32768), formats=None):
     root = base / "results/cuda-context-study-rtx-test"
     root.mkdir(parents=True)
     model_root = root.parent / (root.name + "-70b")
     model_root.mkdir()
     (root / "70b").symlink_to(Path("..") / model_root.name)
     scope = serving.scope_document(["0", "1"], "rtxpro6000")
+    formats = list(formats or serving.FORMATS["70b"])
+    scope["model_formats"] = {"70b": formats}
     put(root / "serving-scope.json", scope)
-    folders = [fixture(root, p, q, "70b") for q in serving.FORMATS["70b"] for p in prompts]
+    folders = [fixture(root, p, q, "70b") for q in formats for p in prompts]
     models = [{"quant": q, "sha256": "synthetic-weights", "layers": 80,
-               "model_family": "Llama-3.3-70B-Instruct"} for q in serving.FORMATS["70b"]]
+               "model_family": "Llama-3.3-70B-Instruct"} for q in formats]
     manifest = {"context_study": True, "llama_cpp_commit": context.PIN, "binary_sha256": "synthetic-binary",
                 "code_sha256": {"runner": "synthetic-code"}, "models": models, "repetitions": 1,
                 "devices": [{"index": str(gpu), "name": GPU, "uuid": f"synthetic-{gpu}", "total_bytes": 96 * context.GIB} for gpu in (0, 1)],
@@ -148,6 +150,14 @@ def make_captures(root, prompt=2048, minimal=False, formats=("Q4_K_M", "Q2_K")):
 
 
 class RTXWorkflowTests(unittest.TestCase):
+    def test_two_format_shard_scope_builds_report_after_first_pilot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = make_study(Path(directory), prompts=(2048,), formats=("IQ1_M", "Q8_0"))
+            audit = serving.build_report(root, plots=False)
+            self.assertEqual(audit["scope"]["model_formats"], {"70b": ["IQ1_M", "Q8_0"]})
+            self.assertEqual(audit["required_cells"], 30)
+            self.assertEqual(audit["measured_cells"], 2)
+
     def test_git_export_splits_serving_and_profile_types_per_format(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "study"
