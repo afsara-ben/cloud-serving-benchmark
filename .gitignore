@@ -7,6 +7,8 @@ logs/*.log
 .run/
 results/*/
 results/*.json
+!results/rtxpro6000-exports/
+!results/rtxpro6000-exports/**
 __pycache__/
 *.pyc
 .venv-a100-serving/

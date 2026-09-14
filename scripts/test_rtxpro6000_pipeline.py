@@ -50,6 +50,31 @@ class PipelineTests(unittest.TestCase):
         self.assertFalse(self.calls.exists())
         self.assertEqual(before, sorted(str(p.relative_to(self.root)) for p in self.root.rglob("*")))
 
+    def test_fast_keeps_complete_serving_but_reduces_profile_sampling(self):
+        result = self.invoke("all", "--dry-run", "--fast")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("scripts/run_rtxpro6000.py run", result.stdout)
+        self.assertIn("--prompt-lengths 32768", result.stdout)
+        self.assertIn("serving repetitions: 1; profile contexts: 2048; minimal profile: 1", result.stdout)
+        self.assertIn("--minimal-images --stage full", result.stdout)
+        self.assertIn("q4_k_m-q2_k-c8-p2048-minimal", result.stdout)
+        self.assertNotIn("--operator-launch-count 1", result.stdout)
+        self.assertNotIn("--prompt-tokens 32768", result.stdout)
+
+    def test_two_server_wrappers_select_disjoint_formats_and_result_roots(self):
+        first = self.invoke("all", "--dry-run", "--formats", "IQ1_M,Q8_0",
+                            "--study-name", "cuda-context-study-rtx-iq1-q8", "--fast")
+        second = self.invoke("all", "--dry-run", "--formats", "Q4_K_M,Q2_K",
+                             "--study-name", "cuda-context-study-rtx-q2-q4", "--fast")
+        for result in (first, second):
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("scripts/export_rtxpro6000_results.py", result.stdout)
+            self.assertIn("serving repetitions: 1", result.stdout)
+        self.assertIn("--formats IQ1_M\\,Q8_0", first.stdout)
+        self.assertNotIn("--formats Q4_K_M\\,Q2_K", first.stdout)
+        self.assertIn("iq1_m-q8_0-c8-p2048-minimal", first.stdout)
+        self.assertIn("q4_k_m-q2_k-c8-p2048-minimal", second.stdout)
+
     def test_failed_build_stops_before_editable_install_prepare_and_gpu_runs(self):
         (self.root / "models").mkdir()
         for name in ("Q2_K", "Q4_K_M"):

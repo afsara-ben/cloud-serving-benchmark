@@ -16,6 +16,7 @@ import sys
 
 import report_context_study as context
 import report_serving as serving
+from capacity import layer_devices
 from cuda_hardware import rated_roof
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -124,10 +125,7 @@ def serving_data(root, allow_missing=False):
             "audit": audit, "devices": manifest.get("devices", []), "sources": sources}
 
 
-def build_poster(root, output=None, allow_missing=False):
-    root = root.resolve()
-    data = serving_data(root, allow_missing)
-    output = destination(output or root / "paper/poster", root, "runtime-cost-poster")
+def render_poster(data, output, source_roots):
     scope = data["audit"]["scope"]
     prompts = scope["prompt_lengths"] + scope["capacity_lengths"]
     clients = scope["concurrencies"]
@@ -227,13 +225,61 @@ def build_poster(root, output=None, allow_missing=False):
         save_figure(fig, output / "figures" / name); plt.close(fig)
     csv_write(output / "coverage.csv", data["coverage"])
     write(output / "data.json", data)
-    write(output / "evidence.json", {"study_root": str(root), "sources": data["sources"], "builder_sha256": sha(Path(__file__))})
+    write(output / "evidence.json", {"study_roots": [str(root) for root in source_roots],
+                                     "sources": data["sources"], "builder_sha256": sha(Path(__file__))})
     return output / "runtime-cost-poster.pdf"
+
+
+def build_poster(root, output=None, allow_missing=False):
+    root = root.resolve()
+    data = serving_data(root, allow_missing)
+    output = destination(output or root / "paper/poster", root, "runtime-cost-poster")
+    return render_poster(data, output, [root])
+
+
+def build_poster_exports(export_roots, output=None):
+    """Combine four independently validated per-format serving exports."""
+    paths, indexes = [], []
+    for root in map(Path, export_roots):
+        root = root.resolve()
+        index_path = root / "index.json"
+        index = read(index_path)
+        recorded = {item["path"]: item["sha256"] for item in index.get("files", [])}
+        selected = sorted(root.glob("*-serving-r1.json"))
+        if any(recorded.get(path.name) != sha(path) for path in selected):
+            raise ValueError(f"Serving export hash does not match {index_path}")
+        paths.extend(selected); indexes.append(index_path)
+    documents = [read(path) for path in paths]
+    formats = [document.get("format") for document in documents]
+    if set(formats) != set(serving.FORMATS["70b"]) or len(formats) != len(set(formats)):
+        raise ValueError("Exports must contain exactly one serving JSON for each 70B format")
+    if any(document.get("hardware") != "rtxpro6000" or document.get("repetitions") != 1
+           or len(document.get("coverage", [])) != 15 for document in documents):
+        raise ValueError("Serving export protocol or 15-cell format coverage is incomplete")
+    names = [{device.get("name") for device in document.get("devices", [])} for document in documents]
+    if any(len(group) != 1 for group in names) or len(set.union(*names)) != 1:
+        raise ValueError("All shard exports must use the same RTX PRO 6000 edition")
+    rows = [row for document in documents for row in document["rows"]]
+    keys = {(row["format"], row["concurrency"], row["input_tokens"]) for row in rows}
+    coverage = [row for document in documents for row in document["coverage"]]
+    coverage_keys = {(row["format"], int(row["concurrency"]), int(row["input_tokens"])) for row in coverage}
+    resolved = {"complete", "capacity_estimated", "observed_oom", "observed_headroom_limit"}
+    if len(keys) != len(rows) or len(coverage) != 60 or len(coverage_keys) != 60 or any(row["status"] not in resolved for row in coverage):
+        raise ValueError("Combined serving exports do not provide a resolved unique 60-cell grid")
+    scope = serving.scope_document(["0", "1"], "rtxpro6000")
+    sources = {str(path): sha(path) for path in paths + indexes}
+    data = {"rows": rows, "coverage": coverage,
+            "audit": {"status": "complete", "scope": scope},
+            "devices": [device for document in documents for device in document["devices"]], "sources": sources}
+    provenance_root = ROOT / "results/rtxpro6000-exports"
+    output = destination(output or provenance_root / "combined-poster", provenance_root, "runtime-cost-poster-from-exports")
+    return render_poster(data, output, [Path(root).resolve() for root in export_roots])
 
 
 METRICS = {
     "instructions": "sm__inst_executed.sum",
     "dram_reads": "dram__bytes_read.sum",
+    "dram_writes": "dram__bytes_write.sum",
     "tensor_pct": "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed",
     "alu_pct": "sm__pipe_alu_cycles_active.avg.pct_of_peak_sustained_elapsed",
     "ipc": "sm__inst_executed.avg.per_cycle_active",
@@ -319,15 +365,26 @@ def bottleneck_data(root, captures):
     if (plan.get("hardware") != "rtxpro6000" or Path(plan["study_root"]).resolve() != root
             or plan.get("concurrency") != 8 or plan.get("output_tokens") != 512):
         raise ValueError("Profile plan is not the selected RTX PRO 6000 C8 study")
+    analysis_scope = plan.get("analysis_scope", "complete_operator_inventory")
+    minimal = analysis_scope == "sampled_gate_up_extrapolation"
+    if analysis_scope not in ("complete_operator_inventory", "sampled_gate_up_extrapolation"):
+        raise ValueError("Unknown profile analysis scope")
+    if minimal and (plan.get("full_capture_count") != 8 or plan.get("operator_capture_count") != 0
+                    or plan.get("operator_command") is not None):
+        raise ValueError("Minimal image profile plan must contain exactly eight full captures and no operator captures")
+    formats = plan.get("formats", [Q4, Q2])
+    if len(formats) != 2 or len(set(formats)) != 2 or set(formats) - set(serving.FORMATS["70b"]):
+        raise ValueError("Profile plan must compare exactly two supported formats")
     # Derive the scientific selection again rather than trusting saved job labels.
-    jobs = full_jobs(root, captures, plan["prompt_tokens"], Path("unused"), "unused")
+    jobs = full_jobs(root, captures, plan["prompt_tokens"], Path("unused"), "unused", formats)
     if len(plan.get("full_jobs", [])) != len(jobs):
         raise ValueError("The full-section profile plan is incomplete")
-    expected_sources = comparison_sources([root / "70b" / q / "c8" / f"p{plan['prompt_tokens']}" for q in (Q4, Q2)])
+    expected_sources = comparison_sources([root / "70b" / q / "c8" / f"p{plan['prompt_tokens']}" for q in formats])
     if plan.get("source_cells") != expected_sources:
         raise ValueError("Serving source changed after profile planning")
     sources = {str(plan_path): sha(plan_path)}
     devices, cases, metric_rows, instruction_rows, roofs = None, [], [], [], []
+    layer_counts = None
     for source in plan["source_cells"]:
         path = Path(source["path"])
         if sha(path) != source["sha256"]:
@@ -337,11 +394,20 @@ def bottleneck_data(root, captures):
         if devices is not None and devices != gpu_rows:
             raise ValueError("Hardware differs across comparison formats")
         devices = gpu_rows
+        split = [float(value) for value in cell["configuration"]["SERVER_TENSOR_SPLIT"].split(",")]
+        assignments = layer_devices(cell["model"]["layers"], split)
+        counts = [assignments[:-1].count(gpu) for gpu in range(len(devices))]
+        if sum(counts) != cell["model"]["layers"]:
+            raise ValueError("Transformer layer placement does not cover the model")
+        if layer_counts is not None and layer_counts != counts:
+            raise ValueError("Layer placement differs across comparison formats")
+        layer_counts = counts
         sources[str(path)] = sha(path)
         raw_path = path.parent / "r1/raw.json"
         sources[str(raw_path)] = sha(raw_path)
     if devices is None or len(plan["source_cells"]) != 2:
         raise ValueError("Expected two serving source cells")
+    sampled_operator_points, extrapolation_rows = [], []
     for job in jobs:
         directory = captures / job["capture"]
         marker, metadata, summary = (read(directory / name) for name in ("study-capture.json", "metadata.json", "counter_summary.json"))
@@ -368,7 +434,7 @@ def bottleneck_data(root, captures):
             raise ValueError(f"Expected five matched gate/up launches: {directory}")
         roles = collections.Counter()
         configs = set()
-        values, opcodes = [], []
+        values, opcodes, scalar_values = [], [], []
         for launch in launches:
             op = launch.get("operation", {})
             if (str(launch["device"]) != str(job["gpu"]) or
@@ -381,6 +447,7 @@ def bottleneck_data(root, captures):
             row = {key: number(launch["metrics"][name]) for key, name in METRICS.items()}
             row["duration_s"] = duration_s(launch)
             values.append(row); opcodes.append(opcode_counts(launch))
+            scalar_values.append(operators.measured(launch))
             for point in tensor_coordinates(launch):
                 roofs.append({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
                               "launch_id": launch["id"], **point, "source": str(directory / "counter_summary.json")})
@@ -397,6 +464,33 @@ def bottleneck_data(root, captures):
         categories = [{"FFMA": counts.get("FFMA", 0), "I2FP": counts.get("I2FP", 0),
                        "Other": sum(v for k, v in counts.items() if k not in ("FFMA", "I2FP"))} for counts in opcodes]
         case["opcodes"] = {key: statistics.median(row[key] for row in categories) for key in categories[0]}
+        # A Llama transformer layer invokes one gate and one up projection. The
+        # capture samples five matching launches; scale its per-launch median to
+        # one matched matrix batch across the transformer layers placed here.
+        projection_factor = 2 * layer_counts[job["gpu"]]
+        case.update(transformer_layers_on_gpu=layer_counts[job["gpu"]],
+                    projected_gate_up_launches=projection_factor,
+                    projected_instructions=case["instructions"] * projection_factor,
+                    projected_dram_reads=case["dram_reads"] * projection_factor,
+                    projected_dram_writes=case["dram_writes"] * projection_factor,
+                    projected_opcodes={key: value * projection_factor for key, value in case["opcodes"].items()})
+        extrapolation_rows.append({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
+            "sampled_launches": len(launches), "transformer_layers_on_gpu": layer_counts[job["gpu"]],
+            "gate_up_launches_for_one_matrix_batch": projection_factor,
+            "median_instructions_per_launch": case["instructions"],
+            "estimated_gate_up_instructions": case["projected_instructions"],
+            "median_dram_read_bytes_per_launch": case["dram_reads"],
+            "estimated_gate_up_dram_read_bytes": case["projected_dram_reads"],
+            "median_dram_write_bytes_per_launch": case["dram_writes"],
+            "estimated_gate_up_dram_write_bytes": case["projected_dram_writes"],
+            "scope": "one matrix batch across gate/up operations on this GPU"})
+        sampled_operator_points.append({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
+            "physical_gpu": devices[job["gpu"]]["index"], "operator": "sampled_gate_up",
+            "role": "blk.*.ffn_gate/up.weight", "type": job["tensor_type"], "m": "28672", "n": str(job["n"]),
+            "k": "8192", "batch_width": "", "fusion": "", "kernel": case["kernel_configuration"][0],
+            "grid": case["kernel_configuration"][1], "block": case["kernel_configuration"][2],
+            **{key: statistics.median(row[key] for row in scalar_values) for key in operators.COORDINATES},
+            "samples": len(scalar_values), "source": str(directory / "counter_summary.json")})
         for launch, counts in zip(launches, opcodes):
             instruction_rows.extend({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
                                      "launch_id": launch["id"], "opcode": key, "instructions": value} for key, value in counts.items())
@@ -408,27 +502,45 @@ def bottleneck_data(root, captures):
         for gpu in (0, 1):
             pair = [c for c in cases if (c["phase"], c["gpu"]) == (phase, gpu)]
             if pair[0]["roles"] != pair[1]["roles"]:
-                raise ValueError("Q2/Q4 gate/up launch proportions differ")
-    operator_root = captures / "operators"
-    operator_plan = read(operator_root / "roofline-plan.json")
-    if (operator_plan.get("hardware_family") != "rtxpro6000" or operator_plan.get("prompt_tokens") != plan["prompt_tokens"]
-            or operator_plan.get("concurrency") != 8 or set(operator_plan.get("operators", [])) != set(operators.OPERATORS)
-            or operator_plan.get("phases") != ["prefill", "decode"] or len(operator_plan.get("jobs", [])) != 60
-            or {Path(c["path"]).resolve() for c in operator_plan["source_cells"]} != {Path(c["path"]).resolve() for c in plan["source_cells"]}):
-        raise ValueError("Operator collection does not cover the same complete workload")
-    points, operator_audit = operators.export_values(operator_root, operator_plan)
-    if operator_audit["status"] != "complete":
-        raise ValueError("Operator captures are incomplete; see operators/roofline-validation.json")
+                raise ValueError("Compared formats have different gate/up launch proportions")
+    if minimal:
+        roof = rated_roof(devices[0]["name"])
+        if any(rated_roof(device["name"]) != roof for device in devices):
+            raise ValueError("Both GPUs must have the same rated ceilings")
+        points = sampled_operator_points
+        operator_plan = {"schema_version": 1, "hardware_family": "rtxpro6000", **roof,
+            "prompt_tokens": plan["prompt_tokens"], "concurrency": 8, "devices": [str(d["index"]) for d in devices],
+            "phases": ["prefill", "decode"], "operators": ["sampled_gate_up"],
+            "launch_cap_per_operator_phase_gpu": 5, "jobs": plan["full_jobs"],
+            "method": "Scalar FP32 coordinates reused from the eight full-section gate/up captures"}
+        operator_audit = {"status": "complete", "captures": 8, "captured_launches": 40,
+            "configuration_groups": len(points),
+            "zero_fp32_groups_not_plotted": sum(point["fp32_flops"] == 0 for point in points),
+            "scope": "sampled gate/up only; no complete operator inventory"}
+    else:
+        operator_root = captures / "operators"
+        operator_plan = read(operator_root / "roofline-plan.json")
+        if (operator_plan.get("hardware_family") != "rtxpro6000" or operator_plan.get("prompt_tokens") != plan["prompt_tokens"]
+                or operator_plan.get("concurrency") != 8 or set(operator_plan.get("operators", [])) != set(operators.OPERATORS)
+                or operator_plan.get("phases") != ["prefill", "decode"] or len(operator_plan.get("jobs", [])) != 60
+                or operator_plan.get("launch_cap_per_operator_phase_gpu") != plan.get("operator_launch_cap_per_capture", 5)
+                or {Path(c["path"]).resolve() for c in operator_plan["source_cells"]} != {Path(c["path"]).resolve() for c in plan["source_cells"]}):
+            raise ValueError("Operator collection does not cover the same complete workload")
+        points, operator_audit = operators.export_values(operator_root, operator_plan)
+        if operator_audit["status"] != "complete":
+            raise ValueError("Operator captures are incomplete; see operators/roofline-validation.json")
+        for point in points:
+            path = operator_root / point["source"]
+            sources[str(path)] = sha(path)
+        sources[str(operator_root / "roofline-plan.json")] = sha(operator_root / "roofline-plan.json")
     for name in ("peak_fp32_flops_per_s", "peak_dram_bytes_per_s"):
         if any(rated_roof(d["name"])[name] != operator_plan[name] for d in devices):
             raise ValueError("Operator roofline uses incorrect GPU ceilings")
-    for point in points:
-        path = operator_root / point["source"]
-        sources[str(path)] = sha(path)
-    sources[str(operator_root / "roofline-plan.json")] = sha(operator_root / "roofline-plan.json")
     return {"prompt_tokens": plan["prompt_tokens"], "devices": devices, "cases": cases, "metric_rows": metric_rows,
             "instruction_rows": instruction_rows, "tensor_samples": roofs, "operator_points": points,
-            "operator_plan": operator_plan, "operator_audit": operator_audit, "sources": sources}
+            "operator_plan": operator_plan, "operator_audit": operator_audit, "sources": sources,
+            "formats": formats,
+            "analysis_scope": analysis_scope, "layer_counts": layer_counts, "extrapolation_rows": extrapolation_rows}
 
 
 def bottleneck_figures(output, data):
@@ -436,22 +548,28 @@ def bottleneck_figures(output, data):
     import numpy as np
     from matplotlib.lines import Line2D
     cases = {(c["format"], c["phase"], c["gpu"]): c for c in data["cases"]}
+    reference, comparison = data["formats"]
+    estimated = data["analysis_scope"] == "sampled_gate_up_extrapolation"
     for phase in ("prefill", "decode"):
         specs = ([("ipc", 1, "IPC (active cycles)"), ("alu_pct", 1, "ALU (% peak, elapsed)"),
                   ("tensor_pct", 1, "Tensor (% peak, elapsed)")] if phase == "prefill" else
                  [("registers", 1, "Registers per thread"), ("register_blocks", 1, "Register-limited blocks/SM"),
                   ("occupancy_pct", 1, "Achieved occupancy (%)")])
-        specs += [("instructions", 1e6, "Executed instructions (M)"), ("dram_reads", 1e6, "DRAM reads (MB)"),
+        specs += [("projected_instructions" if estimated else "instructions", 1e6,
+                   "Estimated GPU0 gate/up instructions (M)" if estimated else "Executed instructions (M)"),
+                  ("projected_dram_reads" if estimated else "dram_reads", 1e6,
+                   "Estimated GPU0 gate/up DRAM reads (MB)" if estimated else "DRAM reads (MB)"),
                   ("duration_s", 1e-3 if phase == "prefill" else 1e-6, "Duration (ms)" if phase == "prefill" else "Duration (us)")]
         fig, axes = plt.subplots(2, 3, figsize=(10.5, 6.2))
         for ax, (key, divisor, label) in zip(axes.flat, specs):
-            values = [cases[q, phase, 0][key] / divisor for q in (Q4, Q2)]
-            bars = ax.bar([0, 1], values, color=[COLORS[Q4], COLORS[Q2]], width=.6)
+            values = [cases[q, phase, 0][key] / divisor for q in (reference, comparison)]
+            bars = ax.bar([0, 1], values, color=[COLORS[reference], COLORS[comparison]], width=.6)
             ax.bar_label(bars, labels=[actual_value(v) for v in values], padding=3, fontsize=9)
-            ax.set(xticks=[0, 1], xticklabels=[Q4, Q2], ylabel=label,
-                   title=percentage(change(*values)) + " (Q2 vs Q4)", ylim=(0, (max(values) or 1) * 1.25))
+            ax.set(xticks=[0, 1], xticklabels=[reference, comparison], ylabel=label,
+                   title=percentage(change(*values)) + f" ({comparison} vs {reference})", ylim=(0, (max(values) or 1) * 1.25))
             ax.grid(axis="y", alpha=.15); ax.set_axisbelow(True)
-        fig.suptitle(f"{phase.title()} gate/up - GPU0 - M=28672, N={512 if phase == 'prefill' else 8}, K=8192")
+        suffix = f"; estimated totals span {cases[reference, phase, 0]['transformer_layers_on_gpu']} layers" if estimated else ""
+        fig.suptitle(f"{phase.title()} gate/up - GPU0 - M=28672, N={512 if phase == 'prefill' else 8}, K=8192{suffix}")
         fig.tight_layout(rect=(0, 0, 1, .93))
         name = "prefill-actual-values" if phase == "prefill" else "decode-register-pressure"
         save_figure(fig, output / "figures" / name); plt.close(fig)
@@ -459,13 +577,15 @@ def bottleneck_figures(output, data):
     fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.8))
     for ax, phase in zip(axes, ("prefill", "decode")):
         x = np.arange(3)
-        for i, q in enumerate((Q4, Q2)):
-            values = [cases[q, phase, 0]["opcodes"][key] / 1e6 for key in ("FFMA", "I2FP", "Other")]
+        for i, q in enumerate((reference, comparison)):
+            inventory = cases[q, phase, 0]["projected_opcodes" if estimated else "opcodes"]
+            values = [inventory[key] / 1e6 for key in ("FFMA", "I2FP", "Other")]
             bars = ax.bar(x + (i - .5) * .36, values, .36, color=COLORS[q], label=q)
             ax.bar_label(bars, labels=[actual_value(v) for v in values], fontsize=8, padding=3)
         ax.set(title=phase.title(), xticks=x, xticklabels=["FFMA", "I2FP", "Other"], ylabel="Executed instructions (M)")
         ax.margins(y=.25); ax.legend(); ax.grid(axis="y", alpha=.15); ax.set_axisbelow(True)
-    fig.suptitle("Instruction mix - GPU0 - complete reconciled opcode inventories")
+    fig.suptitle("Estimated gate/up instruction mix across GPU0 layers" if estimated else
+                 "Instruction mix - GPU0 - complete reconciled opcode inventories")
     fig.tight_layout(rect=(0, 0, 1, .92))
     save_figure(fig, output / "figures/instruction-overhead-actual-values"); plt.close(fig)
 
@@ -481,7 +601,7 @@ def bottleneck_figures(output, data):
         for col, phase in enumerate(("prefill", "decode")):
             ax = axes[row_index, col]
             positive = False
-            for q in (Q4, Q2):
+            for q in (reference, comparison):
                 samples = groups.get((path, phase, q), [])
                 if not samples:
                     continue
@@ -495,7 +615,7 @@ def bottleneck_figures(output, data):
                 ridge = peak / bandwidth
                 xs = np.geomspace(min(intensity, ridge) / 10, max(intensity, ridge) * 10, 150)
                 ax.loglog(xs, np.minimum(peak, xs * bandwidth) / 1e12, "--", color=COLORS[q], alpha=.7)
-                ax.scatter(intensity, point["work_ops_per_s"] / 1e12, color=COLORS[q], marker="o" if q == Q4 else "D", label=q)
+                ax.scatter(intensity, point["work_ops_per_s"] / 1e12, color=COLORS[q], marker="o" if q == reference else "D", label=q)
             if positive:
                 ax.legend(fontsize=8)
             else:
@@ -521,12 +641,13 @@ def bottleneck_figures(output, data):
             for point in points:
                 color, marker = styles[point["operator"]]
                 ax.scatter(point["fp32_flops_per_byte"], point["fp32_flops_per_s"] / 1e12,
-                           edgecolors=color, facecolors=color if point["format"] == Q4 else "none", marker=marker, s=45)
+                           edgecolors=color, facecolors=color if point["format"] == reference else "none", marker=marker, s=45)
             ax.set(title=f"{phase.title()} - GPU{gpu}", xlabel="Scalar FP32 FLOPs / DRAM byte", ylabel="Scalar FP32 TFLOP/s")
             ax.grid(alpha=.2)
     handles = [Line2D([], [], marker=marker, color=color, linestyle="none", label=name) for name, (color, marker) in styles.items()]
     fig.legend(handles=handles, loc="lower center", ncol=4, fontsize=7, bbox_to_anchor=(.5, .015))
-    fig.suptitle("Operator scalar FP32 rooflines - Q4 filled, Q2 hollow")
+    fig.suptitle(("Sampled gate/up scalar FP32 rooflines" if estimated else "Operator scalar FP32 rooflines") +
+                 f" - {reference} filled, {comparison} hollow")
     fig.tight_layout(rect=(0, .09, 1, .95))
     save_figure(fig, output / "figures/operator-roofline-combined"); plt.close(fig)
 
@@ -540,6 +661,8 @@ def report_document(output, data):
     styles["BodyText"].fontSize = 9
     styles["BodyText"].leading = 12
     cases = {(c["format"], c["phase"], c["gpu"]): c for c in data["cases"]}
+    reference, comparison = data["formats"]
+    estimated = data["analysis_scope"] == "sampled_gate_up_extrapolation"
     elements, markdown = [], []
 
     def para(text, title=False):
@@ -566,51 +689,74 @@ def report_document(output, data):
         markdown.extend(["| " + " | ".join(map(str, row)) + " |" for row in rows[1:]]); markdown.append("")
 
     names = " / ".join(dict.fromkeys(d["name"] for d in data["devices"]))
-    para("Runtime bottlenecks of Q2 and Q4 quantization", True)
+    para(f"Runtime bottlenecks of {reference} and {comparison} quantization", True)
     para(f"Llama 3.3 70B; two GPUs: {names}; C8; {data['prompt_tokens']:,} input and 512 output tokens; FP16 KV.")
+    if estimated:
+        para("Reduced image scope: eight full-section captures sample five gate/up launches per format, phase and GPU. "
+             "Values labelled estimated scale each per-launch median across the gate and up operations in the transformer layers assigned to that GPU. "
+             "The scalar roofline reuses these captures; no separate operator inventory was collected.")
     for phase in ("prefill", "decode"):
         if phase == "decode":
             elements.append(PageBreak()); para("Decode gate/up measurements", True)
-        a, b = cases[Q4, phase, 0], cases[Q2, phase, 0]
-        para(f"GPU0 {phase}: Q2 kernel duration changes {percentage(change(a['duration_s'], b['duration_s']))}, "
-             f"executed instructions {percentage(change(a['instructions'], b['instructions']))}, and DRAM reads "
-             f"{percentage(change(a['dram_reads'], b['dram_reads']))} relative to Q4. These are observed kernel comparisons.")
+        a, b = cases[reference, phase, 0], cases[comparison, phase, 0]
+        instruction_key = "projected_instructions" if estimated else "instructions"
+        dram_key = "projected_dram_reads" if estimated else "dram_reads"
+        para(f"GPU0 {phase}: {comparison} kernel duration changes {percentage(change(a['duration_s'], b['duration_s']))}, "
+             f"executed instructions {percentage(change(a[instruction_key], b[instruction_key]))}, and DRAM reads "
+             f"{percentage(change(a[dram_key], b[dram_key]))} relative to {reference}. " +
+             ("Duration is observed per launch; labelled instruction and DRAM totals are layer-placement estimates."
+              if estimated else "These are observed kernel comparisons."))
         figure("prefill-actual-values" if phase == "prefill" else "decode-register-pressure", 310)
-        para("Five gate/up launches per format/phase/GPU; medians within a matched matrix geometry and a single kernel configuration. "
+        para("Five sampled gate/up launches per format/phase/GPU; medians within a matched matrix geometry and a single kernel configuration. "
              "Pipeline percentages describe different resources and must not be added. Register pressure and occupancy do not by themselves isolate a latency cause.")
-        para("The pinned Blackwell dispatch selects MMQ for Q2_K/Q4_K above five activation columns. "
-             "This eight-column decode workload therefore does not inherit the A6000 MMVQ explanation. Actual kernel names are retained in report-data.json.")
+        if set(data["formats"]) == {Q2, Q4}:
+            para("The pinned Blackwell dispatch selects MMQ for Q2_K/Q4_K above five activation columns. "
+                 "This eight-column decode workload therefore does not inherit the A6000 MMVQ explanation. Actual kernel names are retained in report-data.json.")
+        else:
+            para("Actual kernel names and matrix geometry are retained in report-data.json; conclusions from another quantization pair are not transferred to this shard.")
     elements.append(PageBreak()); para("Executed instruction mix", True)
     figure("instruction-overhead-actual-values", 280)
-    rows = [["Phase / opcode", "Q4 (M)", "Q2 (M)", "Change"]]
+    rows = [["Phase / opcode", f"{reference} (M)", f"{comparison} (M)", "Change"]]
     for phase in ("prefill", "decode"):
-        a, b = cases[Q4, phase, 0], cases[Q2, phase, 0]
+        a, b = cases[reference, phase, 0], cases[comparison, phase, 0]
         for name in ("FFMA", "I2FP", "Other"):
-            rows.append([f"{phase} / {name}", actual_value(a['opcodes'][name] / 1e6), actual_value(b['opcodes'][name] / 1e6),
-                         percentage(change(a["opcodes"][name], b["opcodes"][name]))])
+            a_inventory = a["projected_opcodes" if estimated else "opcodes"]
+            b_inventory = b["projected_opcodes" if estimated else "opcodes"]
+            rows.append([f"{phase} / {name}", actual_value(a_inventory[name] / 1e6), actual_value(b_inventory[name] / 1e6),
+                         percentage(change(a_inventory[name], b_inventory[name]))])
     table(rows)
     para("FFMA and I2FP counts are read from complete SASS opcode inventories and checked against total instructions per launch. "
-         "An absent opcode is zero only after that reconciliation. Other includes every remaining opcode. Instruction-count differences do not establish separate runtime costs.")
+         "An absent opcode is zero only after that reconciliation. Other includes every remaining opcode. " +
+         ("The displayed totals multiply per-launch medians by two gate/up operations per placed transformer layer; they estimate one matched matrix batch. "
+          if estimated else "") + "Instruction-count differences do not establish separate runtime costs.")
     elements.append(PageBreak()); para("Tensor Core arithmetic paths", True)
     figure("prefill-tensor-roofline", 440)
     para("Work and matching peak counters are selected by their actual exported arithmetic path, including Blackwell op_imma/op_hmma paths. "
          "Each coordinate is calculated per launch before aggregation. Dashed ceilings use same-capture sustained peaks and observed clocks; "
-         "Q2/Q4 weight storage bits are not a compute precision. Zero-work paths remain in tensor-roofline-samples.csv and have no logarithmic point.")
+         "Quantized weight storage bits are not a compute precision. Zero-work paths remain in tensor-roofline-samples.csv and have no logarithmic point.")
     para("The plot covers tensor work in the selected kernels, not whole-serving performance or a unique bottleneck classification.")
-    elements.append(PageBreak()); para("Scalar FP32 operator rooflines", True)
+    elements.append(PageBreak()); para("Sampled gate/up scalar FP32 rooflines" if estimated else "Scalar FP32 operator rooflines", True)
     figure("operator-roofline-combined", 450)
     roof = data["operator_plan"]
     para(f"Per-GPU rated ceilings: {roof['peak_fp32_flops_per_s'] / 1e12:g} TFLOP/s and "
          f"{roof['peak_dram_bytes_per_s'] / 1e9:g} GB/s. F = FADD + FMUL + 2*FFMA from predicated-on thread counts; "
          "B = DRAM reads + writes; x = F/B; y = F/duration. FP16, tensor, integer and special-function work are excluded.")
-    para(f"All 60 requested operator captures passed validation; {len(data['operator_points'])} kernel/configuration groups. "
-         f"{data['operator_audit']['zero_fp32_groups_not_plotted']} groups have zero scalar FP32 work and are retained in CSV without invented plot positions. "
-         "FlashAttention includes fused softmax; normalization, activations, KV updates and other unselected helpers are outside this inventory.")
+    if estimated:
+        para(f"The same eight full-section captures provide {len(data['operator_points'])} gate/up kernel/configuration groups; "
+             f"five matching launches contribute to each group. {data['operator_audit']['zero_fp32_groups_not_plotted']} groups have zero scalar FP32 work "
+             "and are retained in CSV without invented plot positions. This page describes sampled gate/up kernels only. "
+             "Normalization, attention, activations, KV updates, the output head and other helpers were not captured.")
+    else:
+        para(f"All 60 requested operator captures passed validation with up to "
+             f"{roof['launch_cap_per_operator_phase_gpu']} matching launch(es) per capture; "
+             f"{len(data['operator_points'])} kernel/configuration groups. "
+             f"{data['operator_audit']['zero_fp32_groups_not_plotted']} groups have zero scalar FP32 work and are retained in CSV without invented plot positions. "
+             "FlashAttention includes fused softmax; normalization, activations, KV updates and other unselected helpers are outside this inventory.")
     elements.append(PageBreak()); para("Both GPUs and reproducibility", True)
-    rows = [["Phase", "GPU", "Q4 time (us)", "Q2 time (us)", "Change", "Samples/format"]]
+    rows = [["Phase", "GPU", f"{reference} time (us)", f"{comparison} time (us)", "Change", "Samples/format"]]
     for phase in ("prefill", "decode"):
         for gpu in (0, 1):
-            a, b = cases[Q4, phase, gpu], cases[Q2, phase, gpu]
+            a, b = cases[reference, phase, gpu], cases[comparison, phase, gpu]
             rows.append([phase, str(gpu), f"{a['duration_s'] * 1e6:.3f}", f"{b['duration_s'] * 1e6:.3f}",
                          percentage(change(a["duration_s"], b["duration_s"])), "5"])
     table(rows)
@@ -621,7 +767,7 @@ def report_document(output, data):
          "The resulting report describes the saved counters; it does not copy the previous GPU's performance conclusions.")
     para(f"Pinned llama.cpp: {context.PIN}. Source hashes: evidence.json. Complete launch metrics: hardware-metrics.csv. "
          "Opcode counts: instruction-instances.csv. Tensor coordinates: tensor-roofline-samples.csv. Scalar coordinates: operator-roofline-data.csv. "
-         "Rated scalar roofline source: " + roof["roof_source"])
+         "Layer projection inputs: gate-up-layer-extrapolation.csv. Rated scalar roofline source: " + roof["roof_source"])
     doc = SimpleDocTemplate(str(output / "runtime-bottlenecks-report.pdf"), pagesize=(612, 792),
                             leftMargin=42, rightMargin=42, topMargin=35, bottomMargin=35)
     def page_number(canvas, doc):
@@ -643,6 +789,7 @@ def build_bottlenecks(root, captures, output=None):
     csv_write(output / "instruction-instances.csv", data["instruction_rows"])
     csv_write(output / "tensor-roofline-samples.csv", data["tensor_samples"])
     csv_write(output / "operator-roofline-data.csv", data["operator_points"])
+    csv_write(output / "gate-up-layer-extrapolation.csv", data["extrapolation_rows"])
     write(output / "report-data.json", data)
     write(output / "evidence.json", {"study_root": str(root), "capture_root": str(captures),
                                      "sources": data["sources"], "builder_sha256": sha(Path(__file__))})

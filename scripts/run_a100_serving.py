@@ -106,14 +106,14 @@ def check_devices(devices, environment, idle=False, hardware="a100"):
             raise ValueError("A selected GPU has an active compute process; use an idle allocation")
 
 
-def preparation_entries(model, hardware="a100"):
+def preparation_entries(model, hardware="a100", formats=None):
     source = manifest_path(model, hardware)
     if not source.is_file():
         source = ROOT / "models" / f"study-manifest-{model}.json"
     entries = json.loads(source.read_text())
     indexed = {entry["quant"]: entry for entry in entries}
     prepared, missing = [], []
-    for quant in report.FORMATS[model]:
+    for quant in (formats or report.FORMATS[model]):
         entry = dict(indexed[quant])
         local = ROOT / "models" / entry["filename"]
         original = Path(entry.get("path", local)).expanduser()
@@ -134,12 +134,13 @@ def preparation_entries(model, hardware="a100"):
     return prepared
 
 
-def prepare_models(models, devices, hardware="a100"):
+def prepare_models(models, devices, hardware="a100", formats=None):
     spec = importlib.util.spec_from_file_location("prepare_study", ROOT / "scripts/09_prepare_study_models.py")
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)
     # Check local-only file availability before starting any downloads.
-    entries = {model: preparation_entries(model, hardware) for model in models}
+    entries = {model: preparation_entries(model, hardware, formats.get(model) if isinstance(formats, dict) else formats)
+               for model in models}
     args = SimpleNamespace(include_remote_only=False, devices=",".join(devices),
                            log_dir=ROOT / f"results/{hardware}-model-preparation", source_dir=ROOT / ".run/model-sources",
                            token_file=Path.home() / ".hf_token")
@@ -150,8 +151,10 @@ def prepare_models(models, devices, hardware="a100"):
             helper.write_json(manifest_path(model, hardware), items)
 
 
-def initialize_series(root, devices, hardware="a100"):
+def initialize_series(root, devices, hardware="a100", formats=None):
     scope = report.scope_document(devices, hardware)
+    if formats is not None:
+        scope["model_formats"] = {model: list(values) for model, values in formats.items()}
     path = root / "serving-scope.json"
     if path.exists() and json.loads(path.read_text()) != scope:
         raise ValueError("Existing serving scope differs; choose a new --study-name")
@@ -170,10 +173,11 @@ def initialize_series(root, devices, hardware="a100"):
         path.write_text(json.dumps(scope, indent=2) + "\n")
 
 
-def study_command(action, model, cells, hardware="a100"):
+def study_command(action, model, cells, hardware="a100", formats=None):
     scope = report.scope_document([], hardware)
+    selected_formats = list(formats or scope["model_formats"][model])
     command = ["bash", "execute.sh", action, "cuda", model, "--manifest", str(manifest_path(model, hardware)),
-               "--formats", ",".join(scope["model_formats"][model]), "--concurrencies", ",".join(map(str, scope["concurrencies"])),
+               "--formats", ",".join(selected_formats), "--concurrencies", ",".join(map(str, scope["concurrencies"])),
                "--prompt-lengths", ",".join(map(str, scope["prompt_lengths"])),
                "--capacity-lengths", ",".join(map(str, scope["capacity_lengths"])), "--repetitions", "1"]
     if hardware == "rtxpro6000":
@@ -211,6 +215,10 @@ def main(default_hardware="a100"):
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", name) or name in (".", "..", "cuda-context-study") or name.startswith(("cuda-study", "prefix-study")):
         parser.error("Choose a distinct, simple --study-name for this serving series")
     selected = selection(args)
+    requested_formats = {value.strip() for value in args.formats.split(",")} if args.formats else None
+    selected_formats = {model: [quant for quant in scope["model_formats"][model]
+                                if requested_formats is None or quant in requested_formats]
+                        for model in selected}
     root = ROOT / "results" / name
     environment = dict(os.environ, GPU_DEVICE=",".join(devices), SERVER_TENSOR_SPLIT=",".join("1" for _ in devices),
                        STUDY_NAME=name, ACCELERATOR_BACKEND="cuda", CUDA_ARCHITECTURES=architecture(args.hardware),
@@ -231,28 +239,30 @@ def main(default_hardware="a100"):
         run_command(["bash", "scripts/01_build_llama_cpp.sh"], environment)
         return
     if args.action == "prepare":
-        if args.formats or args.concurrencies != default_concurrencies or args.prompt_lengths != default_prompts:
-            parser.error("prepare operates on all formats of each selected --models size; cell selectors apply to plan/run")
+        if args.concurrencies != default_concurrencies or args.prompt_lengths != default_prompts:
+            parser.error("prepare accepts --formats, but concurrency and prompt cell selectors apply only to plan/run")
         check_devices(devices, environment, hardware=args.hardware)
-        prepare_models(selected, devices, args.hardware)
+        prepare_models(selected, devices, args.hardware, selected_formats)
         return
     if args.action == "run":
         # Validate all selected model manifests before the first inference job.
+        prepared_formats = {}
         for model in selected:
             path = manifest_path(model, args.hardware)
             if not path.is_file():
                 raise ValueError(f"Missing {path}; run prepare --models {model} first")
             entries = json.loads(path.read_text())
-            if [entry["quant"] for entry in entries] != list(report.FORMATS[model]):
-                raise ValueError(f"Unexpected model formats in {path}; rerun prepare")
+            prepared_formats[model] = [entry["quant"] for entry in entries]
+            if not set(selected_formats[model]).issubset(prepared_formats[model]):
+                raise ValueError(f"Selected formats are absent from {path}; rerun prepare with the complete shard format pair")
             for entry in entries:
                 if not Path(entry["path"]).is_file():
                     raise ValueError(f"Missing prepared model: {entry['path']}; rerun prepare")
         check_devices(devices, environment, idle=True, hardware=args.hardware)
-        initialize_series(root, devices, args.hardware)
+        initialize_series(root, devices, args.hardware, prepared_formats if args.hardware == "rtxpro6000" else None)
         for model, cells in selected.items():
             try:
-                run_command(study_command("study", model, cells, args.hardware), environment)
+                run_command(study_command("study", model, cells, args.hardware, prepared_formats[model]), environment)
             finally:
                 # Save available metrics even if a later cell is interrupted.
                 report.build_report(root, plots=False)

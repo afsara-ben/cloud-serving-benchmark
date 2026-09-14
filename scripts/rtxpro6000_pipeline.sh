@@ -16,6 +16,12 @@ csb_remote_dir="${CSB_REMOTE_DIR:-/scratch/cloud-serving-benchmark}"
 csb_source_host="${CSB_SOURCE_HOST:-}"
 csb_source_dir="${CSB_SOURCE_DIR:-/data/home/hys4qm}"
 csb_venv="${CSB_VENV:-$csb_root/.venv-rtxpro6000}"
+csb_fast=0
+csb_minimal_profile=0
+csb_serving_formats="${CSB_SERVING_FORMATS:-IQ1_M,Q2_K,Q4_K_M,Q8_0}"
+csb_profile_formats="${CSB_PROFILE_FORMATS:-Q4_K_M,Q2_K}"
+csb_profile_contexts="${CSB_PROFILE_CONTEXTS:-2048,32768}"
+csb_operator_launch_count="${CSB_OPERATOR_LAUNCH_COUNT:-5}"
 
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 trap 'csb_status=$?; printf "ERROR: stage %s failed at line %s (exit %s). Later stages were not run.\n" "$csb_stage" "$LINENO" "$csb_status" >&2; exit "$csb_status"' ERR
@@ -25,18 +31,27 @@ usage() {
 Usage: ./scripts/rtxpro6000_pipeline.sh [ACTION] [OPTIONS]
 
 Actions (default: all):
-  all              Setup, serving pilots/sweep/poster, profiling pilots/reports.
-  setup            Check Q2/Q4 files, install Python/build dependencies, build
-                   SM120 llama.cpp, install gguf-py, prepare all four models.
-  serving          Run 2K/32K pilots, the 60-cell sweep and the poster builder.
+  all              Setup, selected serving sweep, reduced/full profiles and exports.
+  setup            Check selected local files, install/build, and prepare only
+                   the selected model formats.
+  serving          Run 2K/32K pilots and the selected r1 serving sweep.
   nsight           Locate/install full Nsight Compute and probe both GPUs.
-  profile          Nsight preflight, diagnostic build, 2K/32K captures and PDFs.
-  report           Rebuild the serving report, poster and both bottleneck PDFs.
-  transfer-models  Run ON THE ORIGINAL MACHINE: rsync exact Q2/Q4 files to remote.
-  fetch-models     Run ON THE GPU SERVER: pull Q2/Q4 from --source-host over SSH.
+  profile          Nsight preflight, diagnostic build, selected captures/PDF/export.
+  report           Rebuild the saved-data reports and available complete poster.
+  export           Validate and write one Git-friendly JSON per format/profile type.
+  transfer-models  Run ON THE ORIGINAL MACHINE: rsync selected GGUFs to remote.
+  fetch-models     Run ON THE GPU SERVER: pull selected GGUFs over SSH.
 
 Options:
   --dry-run        Print commands; no installs, transfers, writes or GPU jobs.
+  --fast           Complete selected serving cells including 32K; keep r=1;
+                   profile only 2K with 8 gate/up captures and layer extrapolation.
+                   Skips the 60 targeted operator captures.
+  --profile-contexts CSV  Bottleneck contexts (default: 2048,32768).
+  --formats CSV    Serving formats. Also selects the two profile formats for a
+                   two-format shard (default serving: all four).
+  --profile-formats CSV  Exactly two formats to profile (default: Q4_K_M,Q2_K).
+  --operator-launch-count N  Scalar launches/capture, 1-5 (default: 5).
   --study-name ID  Results series (default: STUDY_NAME or cuda-context-study-rtxpro6000-r1).
   --gpus IDS       Two physical indices (default: GPU_DEVICE or 0,1).
   --model-dir DIR  Local GGUF directory, including NVMe; fetch-models stores files
@@ -52,8 +67,8 @@ an existing full Nsight installation. CUDA_HOME selects CUDA; CSB_NVTX_INCLUDE
 can point to a directory containing nvtx3/nvToolsExt.h.
 
 Run on an idle allocation with two RTX PRO 6000 96GB GPUs and CUDA >=12.8.
-No sudo or driver changes are performed. Missing Q2/Q4 files stop setup before
-installation/build/downloads; use fetch-models, transfer-models or --model-dir.
+No sudo or driver changes are performed. A missing selected Q2/Q4 file stops
+setup before installation/build/downloads; use transfer-models or --model-dir.
 Successful measurements resume with unchanged identity. Failed captures remain
 preserved; see RTX_PRO_6000.md for retry commands using a fresh capture directory.
 HELP
@@ -61,9 +76,10 @@ HELP
 
 while (($#)); do
   case "$1" in
-    all|setup|serving|nsight|profile|report|transfer-models|fetch-models) csb_action="$1"; shift ;;
+    all|setup|serving|nsight|profile|report|export|transfer-models|fetch-models) csb_action="$1"; shift ;;
     --dry-run) csb_dry_run=1; shift ;;
-    --study-name|--gpus|--model-dir|--remote-host|--remote-dir|--source-host|--source-dir)
+    --fast) csb_fast=1; shift ;;
+    --study-name|--gpus|--model-dir|--remote-host|--remote-dir|--source-host|--source-dir|--profile-contexts|--operator-launch-count|--formats|--profile-formats)
       (($# >= 2)) && [[ -n "$2" ]] || die "Missing value for $1"
       case "$1" in
         --study-name) csb_study="$2" ;;
@@ -73,6 +89,10 @@ while (($#)); do
         --remote-dir) csb_remote_dir="$2" ;;
         --source-host) csb_source_host="$2" ;;
         --source-dir) csb_source_dir="$2" ;;
+        --profile-contexts) csb_profile_contexts="$2" ;;
+        --operator-launch-count) csb_operator_launch_count="$2" ;;
+        --formats) csb_serving_formats="$2"; csb_profile_formats="$2" ;;
+        --profile-formats) csb_profile_formats="$2" ;;
       esac
       shift 2 ;;
     -h|--help) usage; exit 0 ;;
@@ -80,8 +100,25 @@ while (($#)); do
   esac
 done
 
+if (( csb_fast )); then
+  csb_profile_contexts=2048
+  csb_minimal_profile=1
+fi
+
 [[ "$csb_study" =~ ^[A-Za-z0-9_.-]+$ && "$csb_study" != . && "$csb_study" != .. ]] || die 'Invalid study name'
 [[ "$csb_gpus" =~ ^[0-9]+,[0-9]+$ && "${csb_gpus%,*}" != "${csb_gpus#*,}" ]] || die 'Select two distinct GPU indices, e.g. --gpus 0,1'
+[[ "$csb_operator_launch_count" =~ ^[1-5]$ ]] || die '--operator-launch-count must be 1 through 5'
+[[ "$csb_serving_formats" =~ ^(IQ1_M|Q2_K|Q4_K_M|Q8_0)(,(IQ1_M|Q2_K|Q4_K_M|Q8_0))*$ ]] || die 'Invalid --formats list'
+IFS=, read -r -a csb_format_check <<< "$csb_serving_formats"
+[[ "$(printf '%s\n' "${csb_format_check[@]}" | sort -u | wc -l)" -eq "${#csb_format_check[@]}" ]] || die '--formats cannot contain duplicates'
+[[ "$csb_profile_formats" =~ ^(IQ1_M|Q2_K|Q4_K_M|Q8_0),(IQ1_M|Q2_K|Q4_K_M|Q8_0)$ ]] || die '--profile-formats requires exactly two formats'
+[[ "${csb_profile_formats%,*}" != "${csb_profile_formats#*,}" ]] || die '--profile-formats cannot repeat a format'
+while IFS= read -r csb_format; do
+  [[ ",$csb_serving_formats," == *",$csb_format,"* ]] || die "Profile format $csb_format is absent from --formats"
+done < <(printf '%s\n' "${csb_profile_formats//,/$'\n'}")
+[[ "$csb_profile_contexts" =~ ^(2048|4096|8192|16384|32768)(,(2048|4096|8192|16384|32768))*$ ]] || die 'Invalid --profile-contexts list'
+IFS=, read -r -a csb_profile_prompts <<< "$csb_profile_contexts"
+[[ "$(printf '%s\n' "${csb_profile_prompts[@]}" | sort -u | wc -l)" -eq "${#csb_profile_prompts[@]}" ]] || die '--profile-contexts cannot contain duplicates'
 # Resolve user-supplied relative paths before changing working directory.
 if [[ "$csb_action" = fetch-models ]] && (( ! csb_model_dir_explicit )); then
   csb_model_dir="$csb_root/models"
@@ -91,7 +128,17 @@ fi
 cd -- "$csb_root"
 csb_python="$csb_venv/bin/python3"
 csb_study_root="$csb_root/results/$csb_study"
-csb_models=(Llama-3.3-70B-Instruct-Q2_K.gguf Llama-3.3-70B-Instruct-Q4_K_M.gguf)
+declare -A csb_model_names=(
+  [IQ1_M]=Llama-3.3-70B-Instruct.i1-IQ1_M.gguf
+  [Q2_K]=Llama-3.3-70B-Instruct-Q2_K.gguf
+  [Q4_K_M]=Llama-3.3-70B-Instruct-Q4_K_M.gguf
+  [Q8_0]=Llama-3.3-70B-Instruct.Q8_0.gguf
+)
+IFS=, read -r -a csb_selected_formats <<< "$csb_serving_formats"
+csb_models=()
+for csb_format in "${csb_selected_formats[@]}"; do csb_models+=("${csb_model_names[$csb_format]}"); done
+csb_profile_tag="${csb_profile_formats//,/-}"
+csb_profile_tag="${csb_profile_tag,,}"
 
 run() {
   printf '+ '; printf '%q ' "$@"; printf '\n'
@@ -126,8 +173,12 @@ configure_cuda() {
 }
 
 ensure_models() {
-  local name missing=0
-  for name in "${csb_models[@]}"; do
+  local name quant missing=0
+  local -a selected
+  IFS=, read -r -a selected <<< "$csb_serving_formats"
+  for quant in "${selected[@]}"; do
+    name="${csb_model_names[$quant]}"
+    [[ "$quant" == Q2_K || "$quant" == Q4_K_M ]] || continue
     if [[ ! -s "$csb_root/models/$name" && ! -s "$csb_model_dir/$name" ]] && (( ! csb_dry_run )); then
       printf 'Missing GGUF: %s\n' "$csb_root/models/$name" >&2
       missing=1
@@ -135,13 +186,16 @@ ensure_models() {
   done
   (( missing == 0 )) || die 'On this GPU server, run fetch-models --source-host USER@SOURCE_HOST; alternatively run transfer-models on the source machine or use --model-dir for existing local GGUFs. No setup jobs were started.'
   run mkdir -p "$csb_root/models"
-  for name in "${csb_models[@]}"; do
+  for quant in "${selected[@]}"; do
+    name="${csb_model_names[$quant]}"
     if [[ ! -s "$csb_root/models/$name" && "$csb_model_dir" != "$csb_root/models" ]] &&
        { [[ -s "$csb_model_dir/$name" ]] || (( csb_dry_run )); }; then
       [[ ! -e "$csb_root/models/$name" && ! -L "$csb_root/models/$name" ]] || die "Existing empty file or broken link: models/$name; repair it before setup."
       run ln -s "$csb_model_dir/$name" "$csb_root/models/$name"
     fi
-    run test -s "$csb_root/models/$name"
+    if [[ "$quant" == Q2_K || "$quant" == Q4_K_M || -s "$csb_root/models/$name" || -s "$csb_model_dir/$name" ]]; then
+      run test -s "$csb_root/models/$name"
+    fi
   done
 }
 
@@ -157,7 +211,7 @@ setup() {
   run "$csb_python" -m pip install ninja 'cmake>=3.28' -r scripts/requirements-rtxpro6000.txt
   run "$csb_python" scripts/run_rtxpro6000.py build --gpus "$csb_gpus"
   run "$csb_python" -m pip install -e vendor/llama.cpp/gguf-py
-  run "$csb_python" scripts/run_rtxpro6000.py prepare --gpus "$csb_gpus"
+  run "$csb_python" scripts/run_rtxpro6000.py prepare --gpus "$csb_gpus" --formats "$csb_serving_formats"
 }
 
 nsight() {
@@ -192,15 +246,19 @@ nsight() {
 
 serving() {
   csb_stage=serving
-  run "$csb_python" scripts/run_rtxpro6000.py plan --study-name "$csb_study" --gpus "$csb_gpus"
+  run "$csb_python" scripts/run_rtxpro6000.py plan --study-name "$csb_study" --gpus "$csb_gpus" --formats "$csb_serving_formats"
+  local pilot_format="${csb_selected_formats[0]}"
+  if [[ ",$csb_serving_formats," == *,Q4_K_M,* ]]; then pilot_format=Q4_K_M; fi
   local prompt
   for prompt in 2048 32768; do
     run "$csb_python" scripts/run_rtxpro6000.py run --study-name "$csb_study" --gpus "$csb_gpus" \
-      --formats Q4_K_M --concurrencies 8 --prompt-lengths "$prompt"
+      --formats "$pilot_format" --concurrencies 8 --prompt-lengths "$prompt"
   done
-  run "$csb_python" scripts/run_rtxpro6000.py run --study-name "$csb_study" --gpus "$csb_gpus"
-  run "$csb_python" scripts/run_rtxpro6000.py report --study-name "$csb_study" --gpus "$csb_gpus"
-  run "$csb_python" paper/poster/build.py --study-root "$csb_study_root"
+  run "$csb_python" scripts/run_rtxpro6000.py run --study-name "$csb_study" --gpus "$csb_gpus" --formats "$csb_serving_formats"
+  run "$csb_python" scripts/run_rtxpro6000.py report --study-name "$csb_study" --gpus "$csb_gpus" --formats "$csb_serving_formats"
+  if [[ "$csb_serving_formats" == IQ1_M,Q2_K,Q4_K_M,Q8_0 ]]; then
+    run "$csb_python" paper/poster/build.py --study-root "$csb_study_root"
+  fi
 }
 
 profile() {
@@ -209,23 +267,56 @@ profile() {
   local build=("$csb_python" benchmark/matrix_diagnostic.py build --server --cuda-arch 120 --build-root .run/rtxpro6000-profile-build)
   if [[ -n "${CSB_NVTX_INCLUDE:-}" ]]; then build+=(--nvtx-include "$CSB_NVTX_INCLUDE"); fi
   run "${build[@]}"
-  local prompt action
-  for prompt in 2048 32768; do
+  local prompt action capture_root
+  local profile_options=()
+  if (( csb_minimal_profile )); then profile_options=(--minimal-images --stage full); fi
+  for prompt in "${csb_profile_prompts[@]}"; do
+    capture_root="$csb_study_root/profiles/$csb_profile_tag-c8-p$prompt"
+    if (( csb_minimal_profile )); then
+      capture_root+="-minimal"
+    elif [[ "$csb_operator_launch_count" != 5 ]]; then
+      capture_root+="-op$csb_operator_launch_count"
+    fi
     for action in plan pilot run; do
       run "$csb_python" scripts/profile_rtxpro6000.py "$action" --study-root "$csb_study_root" \
-        --prompt-tokens "$prompt" --ncu "$NCU_BIN"
+        --prompt-tokens "$prompt" --operator-launch-count "$csb_operator_launch_count" \
+        --formats "$csb_profile_formats" --output "$capture_root" --ncu "$NCU_BIN" "${profile_options[@]}"
     done
+  done
+  export_results
+}
+
+export_results() {
+  csb_stage=export
+  local prompt capture_root
+  for prompt in "${csb_profile_prompts[@]}"; do
+    capture_root="$csb_study_root/profiles/$csb_profile_tag-c8-p$prompt"
+    if (( csb_minimal_profile )); then
+      capture_root+="-minimal"
+    elif [[ "$csb_operator_launch_count" != 5 ]]; then
+      capture_root+="-op$csb_operator_launch_count"
+    fi
+    run "$csb_python" scripts/export_rtxpro6000_results.py --study-root "$csb_study_root" \
+      --captures "$capture_root"
   done
 }
 
 report() {
   csb_stage=report
-  run "$csb_python" scripts/run_rtxpro6000.py report --study-name "$csb_study" --gpus "$csb_gpus"
-  run "$csb_python" paper/poster/build.py --study-root "$csb_study_root"
-  local prompt
-  for prompt in 2048 32768; do
+  run "$csb_python" scripts/run_rtxpro6000.py report --study-name "$csb_study" --gpus "$csb_gpus" --formats "$csb_serving_formats"
+  if [[ "$csb_serving_formats" == IQ1_M,Q2_K,Q4_K_M,Q8_0 ]]; then
+    run "$csb_python" paper/poster/build.py --study-root "$csb_study_root"
+  fi
+  local prompt capture_root
+  for prompt in "${csb_profile_prompts[@]}"; do
+    capture_root="$csb_study_root/profiles/$csb_profile_tag-c8-p$prompt"
+    if (( csb_minimal_profile )); then
+      capture_root+="-minimal"
+    elif [[ "$csb_operator_launch_count" != 5 ]]; then
+      capture_root+="-op$csb_operator_launch_count"
+    fi
     run "$csb_python" paper/runtime-bottlenecks-report/build.py --study-root "$csb_study_root" \
-      --captures "$csb_study_root/profiles/c8-p$prompt"
+      --captures "$capture_root"
   done
 }
 
@@ -264,11 +355,13 @@ fetch_models() {
   printf 'GGUF storage directory: %s\n' "$csb_model_dir"
 }
 
-printf 'RTX PRO 6000 workflow: %s; study: %s; GPUs: %s; dry-run: %s\n' "$csb_action" "$csb_study" "$csb_gpus" "$csb_dry_run"
+printf 'RTX PRO 6000 workflow: %s; study: %s; GPUs: %s; formats: %s; profile formats: %s; serving repetitions: 1; profile contexts: %s; minimal profile: %s; operator launches: %s; dry-run: %s\n' \
+  "$csb_action" "$csb_study" "$csb_gpus" "$csb_serving_formats" "$csb_profile_formats" "$csb_profile_contexts" "$csb_minimal_profile" "$csb_operator_launch_count" "$csb_dry_run"
 case "$csb_action" in
   all) setup; serving; profile ;;
   setup) setup ;;
   serving|nsight|profile|report) activate_environment; "$csb_action" ;;
+  export) activate_environment; export_results ;;
   transfer-models) transfer_models ;;
   fetch-models) fetch_models ;;
 esac

@@ -12,48 +12,80 @@ All commands below are also packaged in
 executable and stops at the first failing command. Sync the updated checkout
 to the remote host before running it.
 
-The original Q2/Q4 GGUFs were verified on **`xsel02`**, in `/data/home/hys4qm/`.
-If you are logged into **`l2x02`**, pull them into that checkout with:
+### Two-server split (recommended reduced workflow)
+
+Use separate study roots so the two servers never update the same manifest or
+progress file. Both launchers keep one serving repetition (`r1`), run the same
+C8/C16/C32 and 2K/4K/8K/16K/32K grid for their two formats, and profile C8/2K
+with eight full-section captures. Each capture samples five gate/up launches.
+The report scales the per-launch medians over the 41/39 transformer-layer
+placement and reuses those captures for the sampled gate/up scalar roofline.
+There are no 60-capture scalar-operator campaigns and no 32K profile campaigns.
+
+On **`l2x01`** (IQ1_M and Q8_0):
 
 ```bash
 cd /scratch/cloud-serving-benchmark
-./scripts/rtxpro6000_pipeline.sh fetch-models \
-  --source-host hys4qm@xsel02 --source-dir /data/home/hys4qm
+./scripts/rtxpro6000_server_iq1_q8.sh all
 ```
 
-The source must be SSH-reachable from the destination; use its full SSH address
-or a configured SSH jump host if the short hostname is unavailable. This action
-checks file existence on the source host and transfers into the local checkout's
-`models/`. It does not require the files to already exist on `l2x02`.
-
-To store the large files on `l2x02`'s NVMe mounted elsewhere, pass that local
-directory with `--model-dir`. For example, **if `/mnt/nvme` is the actual NVMe
-mount**, run on `l2x02`:
+On **`l2x02`** (Q2_K and Q4_K_M):
 
 ```bash
-./scripts/rtxpro6000_pipeline.sh fetch-models \
-  --source-host hys4qm@xsel02 --source-dir /data/home/hys4qm \
-  --model-dir /mnt/nvme/llama70b
-./scripts/rtxpro6000_pipeline.sh all --model-dir /mnt/nvme/llama70b
+cd /scratch/cloud-serving-benchmark
+./scripts/rtxpro6000_server_q2_q4.sh all
 ```
 
-Replace the example path with the real mount; `findmnt -T /path/to/directory`
-shows which filesystem backs an existing directory. The transfer writes the
-GGUFs into that NVMe directory and creates links in the checkout's `models/`.
-The links do not duplicate the weights onto another disk. If the GGUFs are
-already stored there, skip `fetch-models` and run `all --model-dir` directly.
+If the GGUFs are outside the checkout, append `--model-dir /absolute/nvme/path`
+to the applicable command. `l2x01` selects only `IQ1_M,Q8_0`; `l2x02` selects
+only `Q4_K_M,Q2_K`. Setup prepares only that pair. The study roots are:
 
-Alternatively, run this **on `xsel02`**, to push the files to the GPU server:
+```text
+results/cuda-context-study-rtxpro6000-iq1-q8-r1/
+results/cuda-context-study-rtxpro6000-q2-q4-r1/
+```
+
+Each run writes small, commit-ready files separately by quantization and
+profile type:
+
+```text
+results/rtxpro6000-exports/cuda-context-study-rtxpro6000-iq1-q8-r1/
+  IQ1_M-serving-r1.json
+  IQ1_M-profile-full-sections-p2048.json
+  IQ1_M-profile-scalar-roofline-p2048.json
+  Q8_0-...
+results/rtxpro6000-exports/cuda-context-study-rtxpro6000-q2-q4-r1/
+  Q4_K_M-...
+  Q2_K-...
+  Q4_K_M-Q2_K-runtime-bottlenecks-p2048.pdf
+```
+
+These export directories are intentionally not ignored by Git. Raw serving and
+Nsight directories remain ignored because they can be large. Commit an export
+on each server with:
 
 ```bash
-./scripts/rtxpro6000_pipeline.sh transfer-models --model-dir /data/home/hys4qm
+git add results/rtxpro6000-exports/
+git commit -m "Add RTX PRO 6000 benchmark shard"
+git push
 ```
 
-The default destination is `hys4qm@l2x02:/scratch/cloud-serving-benchmark/models/`;
-use `--remote-host` or `--remote-dir` to change it. Transfer is a separate action
-and is never attempted by `all`. `transfer-models` reads local source files,
-whereas `fetch-models` reads files from `--source-host`. Identical path strings
-on two machines do not imply that their filesystems are shared.
+After both export directories are present in one checkout, build the complete
+60-cell poster without the raw server trees:
+
+```bash
+python3 paper/poster/build.py --serving-exports \
+  results/rtxpro6000-exports/cuda-context-study-rtxpro6000-iq1-q8-r1 \
+  results/rtxpro6000-exports/cuda-context-study-rtxpro6000-q2-q4-r1 \
+  --output results/rtxpro6000-exports/combined-poster
+```
+
+Copy each server's selected GGUF pair into its checkout's `models/` directory,
+or keep the files elsewhere on that server's NVMe and pass the absolute
+directory with `--model-dir`. `/scratch` is backed by the root NVMe filesystem
+on `l2x02`, so `/scratch/cloud-serving-benchmark/models` is already NVMe-backed.
+The wrapper creates checkout-local symlinks when `--model-dir` points elsewhere;
+it does not duplicate the weight files.
 
 Then **on the remote GPU server**, run:
 
@@ -62,6 +94,19 @@ cd /scratch/cloud-serving-benchmark
 ./scripts/rtxpro6000_pipeline.sh all --dry-run  # Preview; no changes or GPU work.
 ./scripts/rtxpro6000_pipeline.sh all            # Execute the complete workflow.
 ```
+
+For the shortest single-server workflow that still creates the complete Runtime
+Cost poster with 32K serving data and a reduced-scope 2K bottleneck report, use:
+
+```bash
+./scripts/rtxpro6000_pipeline.sh all --fast
+```
+
+`--fast` omits the optional 32K profiling campaign and all 60 targeted scalar
+operator captures. The eight full-section captures retain five gate/up launches
+and supply the counters used by every reduced report figure. The builder clearly
+labels layer-extrapolated values and the limited gate/up operator scope. The
+serving protocol stays at `r1` and its 60-cell poster grid is unchanged.
 
 `all` checks the local Q2/Q4 files, creates/activates `.venv-rtxpro6000`, installs
 dependencies including Ninja and CMake, builds the pinned SM120 server, prepares
@@ -100,7 +145,7 @@ the destination machine before a full campaign is warranted.
 | Concurrent clients | 8, 16, 32 |
 | Input tokens | 2,048; 4,096; 8,192; 16,384; 32,768 |
 | Output tokens | Exactly 512 per request |
-| Serving sampling | C discarded warmup requests, then 2C measured requests; one repetition |
+| Serving sampling | C discarded warmup requests, then 2C measured requests inside one repetition (`r1`) |
 | Placement | Two GPUs, layer split 1:1, all layers/output on GPUs; FP16 KV; flash attention |
 | Bottleneck comparisons | Q2_K vs Q4_K_M, C8, separately at 2K and 32K |
 
@@ -110,13 +155,18 @@ protocol applies to 32K. Here, 32K means 32,768 **input** tokens, plus 512 outpu
 tokens; it is not a 32,768-token total slot limit. No 70B FP16 or 64K run is
 included.
 
-Each bottleneck workload needs **68 serial captures**: eight full-section
+The complete bottleneck workload needs **68 serial captures**: eight full-section
 gate/up captures (two formats × two phases × two GPUs) and 60 targeted scalar
 operator captures. Each capture has eight discarded warmup requests and eight
 profiled requests, with a cap of five matching launches. The two contexts
 therefore require 136 captures. Nsight replay makes these substantially more
 expensive than 136 ordinary inference runs. Timings under the profiler are
 separate from the serving measurements.
+
+The recommended two-server launchers use the reduced image scope: **8 captures
+per server**, at 2K only. The servers run concurrently, and each processes 30
+serving cells. The five sampled gate/up launches per capture are not independent
+experiment repetitions; the serving data remains `r1`.
 
 ## 1. Prepare the remote checkout and tools
 
@@ -294,9 +344,9 @@ Interface. This installs the profiler in your account; it does not update the
 driver or change counter permissions. If the following counter probe reports a
 driver or permission failure, resolve that reported problem before profiling.
 
-Run after the serving cells have completed. Both Q4_K_M and Q2_K at C8 and the
+Run after the serving cells have completed. Both selected formats at C8 and the
 selected context must pass independent serving validation before even the
-single-capture pilot starts. Captures reuse the saved physical GPU selection;
+single-capture pilot starts. The default pair is Q4_K_M/Q2_K. Captures reuse the saved physical GPU selection;
 both GPUs stay visible, with one logical GPU's counters selected at a time.
 
 ```bash

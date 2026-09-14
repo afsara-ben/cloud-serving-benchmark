@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Collect the 70B bottlenecks figure inputs on RTX PRO 6000, serially.
 
-Each workload uses 8 full-section gate/up captures and 60 targeted scalar
-operator captures. plan is read-only and works before serving has completed.
-run requires completed Q2_K and Q4_K_M cells at C8. No automatic retries.
+The complete workflow uses 8 full-section gate/up captures and 60 targeted
+scalar operator captures per context. --minimal-images collects only the eight
+full-section captures, reuses them for the gate/up scalar roofline, and lets the
+publication builder extrapolate the sampled launches across the saved layer
+placement. plan is read-only and works before serving has completed. run
+requires completed C8 serving cells for both selected formats. No automatic
+retries.
 """
 from __future__ import annotations
 
@@ -21,6 +25,7 @@ import profile_a100_setting as profiler
 from run_a100_serving import check_devices
 
 ROOT = Path(__file__).resolve().parents[1]
+TENSOR_TYPES = {"IQ1_M": "iq1_m", "Q2_K": "q2_K", "Q4_K_M": "q4_K", "Q8_0": "q8_0"}
 
 
 def comparison_sources(cells):
@@ -40,9 +45,10 @@ def comparison_sources(cells):
     return sources
 
 
-def full_jobs(root, output, prompt, server, ncu):
+def full_jobs(root, output, prompt, server, ncu, formats=("Q4_K_M", "Q2_K")):
     jobs = []
-    for quant, tensor_type in (("Q4_K_M", "q4_K"), ("Q2_K", "q2_K")):
+    for quant in formats:
+        tensor_type = TENSOR_TYPES[quant]
         cell = root / "70b" / quant / "c8" / f"p{prompt}"
         for phase in ("prefill", "decode"):
             n = 512 if phase == "prefill" else 8
@@ -66,13 +72,27 @@ def main():
     parser.add_argument("--study-root", type=Path, default=ROOT / "results/cuda-context-study-rtxpro6000-2gpu")
     parser.add_argument("--prompt-tokens", type=int, choices=(2048, 4096, 8192, 16384, 32768), default=2048)
     parser.add_argument("--stage", choices=("full", "operators", "all"), default="all")
+    parser.add_argument("--formats", default="Q4_K_M,Q2_K",
+                        help="Exactly two comma-separated formats to compare: IQ1_M,Q2_K,Q4_K_M,Q8_0")
+    parser.add_argument("--operator-launch-count", type=int, default=5,
+                        help="Matching launches per scalar-operator capture (1-5; 1 is the faster, lower-sampling option)")
+    parser.add_argument("--minimal-images", action="store_true",
+                        help="Collect eight gate/up captures only; reuse them for all report figures and extrapolate by layer placement")
     parser.add_argument("--gpus", default="0,1", help="Only used by preflight; captures use saved serving GPUs")
     parser.add_argument("--diagnostic-server", type=Path, default=ROOT / ".run/rtxpro6000-profile-build/baseline/llama-server")
     parser.add_argument("--ncu", default=os.environ.get("NCU_BIN") or shutil.which("ncu") or "ncu")
     parser.add_argument("--output", type=Path, help="Capture root; use a fresh directory to retry failed captures")
     args = parser.parse_args()
+    if not 1 <= args.operator_launch_count <= 5:
+        parser.error("--operator-launch-count must be between 1 and 5")
+    formats = [item.strip() for item in args.formats.split(",") if item.strip()]
+    if len(formats) != 2 or len(set(formats)) != 2 or set(formats) - set(TENSOR_TYPES):
+        parser.error("--formats must select exactly two unique formats from IQ1_M,Q2_K,Q4_K_M,Q8_0")
+    if args.minimal_images and args.stage != "full":
+        parser.error("--minimal-images requires --stage full")
     root = args.study_root.resolve()
-    output = (args.output or root / "profiles" / f"c8-p{args.prompt_tokens}").resolve()
+    suffix = "-minimal" if args.minimal_images else ""
+    output = (args.output or root / "profiles" / f"c8-p{args.prompt_tokens}{suffix}").resolve()
     server = args.diagnostic_server.resolve()
     if args.action == "preflight":
         devices = args.gpus.split(",")
@@ -104,16 +124,21 @@ def main():
         from rtxpro6000_publication import build_bottlenecks
         print(build_bottlenecks(root, output))
         return
-    jobs = full_jobs(root, output, args.prompt_tokens, server, args.ncu)
-    cells = [root / "70b" / quant / "c8" / f"p{args.prompt_tokens}" for quant in ("Q4_K_M", "Q2_K")]
+    jobs = full_jobs(root, output, args.prompt_tokens, server, args.ncu, formats)
+    cells = [root / "70b" / quant / "c8" / f"p{args.prompt_tokens}" for quant in formats]
     operator_command = [sys.executable, str(ROOT / "scripts/collect_a100_roofline.py"), "run",
                         "--hardware", "rtxpro6000", "--cells", *map(str, cells), "--output", str(output / "operators"),
-                        "--diagnostic-server", str(server), "--ncu", args.ncu]
+                        "--diagnostic-server", str(server), "--ncu", args.ncu,
+                        "--launch-count", str(args.operator_launch_count)]
     plan = {"schema_version": 1, "hardware": "rtxpro6000", "study_root": str(root),
             "prompt_tokens": args.prompt_tokens, "concurrency": 8, "output_tokens": 512,
             "warmup_requests_per_capture": 8, "profiled_requests_per_capture": 8,
-            "full_capture_count": 8, "operator_capture_count": 60, "launch_cap_per_capture": 5,
-            "full_jobs": jobs, "operator_command": operator_command}
+            "full_capture_count": 8, "operator_capture_count": 0 if args.minimal_images else 60,
+            "launch_cap_per_capture": 5,
+            "operator_launch_cap_per_capture": 0 if args.minimal_images else args.operator_launch_count,
+            "analysis_scope": "sampled_gate_up_extrapolation" if args.minimal_images else "complete_operator_inventory",
+            "formats": formats,
+            "full_jobs": jobs, "operator_command": None if args.minimal_images else operator_command}
     if args.action == "plan":
         print(json.dumps(plan | {"selected_stage": args.stage, "inference_executed": False}, indent=2))
         return
@@ -133,9 +158,9 @@ def main():
     if args.action == "pilot":
         print("Pilot capture completed; run resumes this same capture in the full campaign.")
         return
-    if args.stage in ("operators", "all"):
+    if not args.minimal_images and args.stage in ("operators", "all"):
         subprocess.run(operator_command, cwd=ROOT, check=True)
-    if args.stage == "all":
+    if args.stage == "all" or args.minimal_images:
         from rtxpro6000_publication import build_bottlenecks
         print(build_bottlenecks(root, output))
 

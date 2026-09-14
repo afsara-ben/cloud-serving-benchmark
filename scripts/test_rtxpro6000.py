@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import collect_a100_roofline as operators
 import cuda_hardware
+import export_rtxpro6000_results as exporter
 import profile_a100_setting as profile
 import profile_rtxpro6000 as pipeline
 import report_context_study as context
@@ -83,8 +84,9 @@ def sample(quant, phase, gpu, role="blk.*.ffn_gate.weight", index=0):
     total = 400 if quant == "Q4_K_M" else 500
     opcodes = {"FFMA": total / 4, "I2FP": total / 8, "IADD3": total * 5 / 8}
     tensor = "sm__ops_path_tensor_op_imma_src_int8_sparsity_off"
+    tensor_type = {"IQ1_M": "iq1_m", "Q2_K": "q2_K", "Q4_K_M": "q4_K", "Q8_0": "q8_0"}[quant]
     return {"id": str(index), "device": str(gpu), "kernel": "synthetic_mul_mat_q", "grid": "(1,1,1)", "block": "(32,1,1)",
-            "operation": {"role": role, "type": "q4_K" if quant == "Q4_K_M" else "q2_K", "m": "28672",
+            "operation": {"role": role, "type": tensor_type, "m": "28672",
                           "n": "512" if phase == "prefill" else "8", "k": "8192", "phase": phase,
                           "operation_match": "nvtx_same_capture"},
             "metrics": {"gpu__time_duration.sum": metric(1000, "ns"),
@@ -104,14 +106,18 @@ def sample(quant, phase, gpu, role="blk.*.ffn_gate.weight", index=0):
                     metric(50) | {"instance": "FMUL"}, metric(250) | {"instance": "FFMA"}]}}
 
 
-def make_captures(root, prompt=2048):
+def make_captures(root, prompt=2048, minimal=False, formats=("Q4_K_M", "Q2_K")):
     output = root / "profiles" / f"c8-p{prompt}"
     output.mkdir(parents=True)
-    jobs = pipeline.full_jobs(root, output, prompt, Path("synthetic-server"), "synthetic-ncu")
-    cells = [root / "70b" / q / "c8" / f"p{prompt}" for q in ("Q4_K_M", "Q2_K")]
+    jobs = pipeline.full_jobs(root, output, prompt, Path("synthetic-server"), "synthetic-ncu", formats)
+    cells = [root / "70b" / q / "c8" / f"p{prompt}" for q in formats]
     sources = [{"path": str((p / "cell.json").resolve()), "sha256": publication.sha(p / "cell.json")} for p in cells]
     put(output / "paper-profile-plan.json", {"hardware": "rtxpro6000", "study_root": str(root),
-        "prompt_tokens": prompt, "concurrency": 8, "output_tokens": 512, "source_cells": sources, "full_jobs": jobs})
+        "prompt_tokens": prompt, "concurrency": 8, "output_tokens": 512, "source_cells": sources, "full_jobs": jobs,
+        "formats": list(formats), "full_capture_count": 8, "operator_capture_count": 0 if minimal else 60,
+        "operator_command": None if minimal else ["synthetic"],
+        "analysis_scope": "sampled_gate_up_extrapolation" if minimal else "complete_operator_inventory",
+        "operator_launch_cap_per_capture": 0 if minimal else 5})
     for job in jobs:
         directory = output / job["capture"]
         put(directory / "study-capture.json", {"exit_code": 0, "source_cell": str((Path(job["cell"]) / "cell.json").resolve()),
@@ -123,6 +129,8 @@ def make_captures(root, prompt=2048):
                 "build": {"configure_command": ["-DCMAKE_CUDA_ARCHITECTURES=120"]}}})
         put(directory / "counter_summary.json", {"launches": [sample(job["format"], job["phase"], job["gpu"],
             "blk.*.ffn_gate.weight" if i % 2 == 0 else "blk.*.ffn_up.weight", i) for i in range(5)]})
+    if minimal:
+        return output
     args = SimpleNamespace(cells=cells, output=output / "operators", hardware="rtxpro6000", phases=["prefill", "decode"],
                            operators=list(operators.OPERATORS), launch_count=5, diagnostic_server=Path("synthetic-server"), ncu="synthetic-ncu")
     plan = operators.make_plan(args)
@@ -140,6 +148,30 @@ def make_captures(root, prompt=2048):
 
 
 class RTXWorkflowTests(unittest.TestCase):
+    def test_git_export_splits_serving_and_profile_types_per_format(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "study"
+            captures, output = root / "profiles/pair", Path(directory) / "exports"
+            captures.mkdir(parents=True)
+            serving_data = {"rows": [{"format": q, "source": str(root / q)} for q in ("Q4_K_M", "Q2_K")],
+                "coverage": [{"format": q} for q in ("Q4_K_M", "Q2_K")],
+                "audit": {"scope": {"model_formats": {"70b": ["Q4_K_M", "Q2_K"]}}},
+                "devices": [{"name": GPU}], "sources": {str(root / "manifest.json"): "abc"}}
+            profile_data = {"formats": ["Q4_K_M", "Q2_K"], "prompt_tokens": 2048,
+                "analysis_scope": "sampled_gate_up_extrapolation", "layer_counts": [41, 39],
+                "cases": [], "metric_rows": [], "instruction_rows": [], "tensor_samples": [],
+                "extrapolation_rows": [], "operator_plan": {}, "operator_audit": {}, "operator_points": []}
+            argv = ["export_rtxpro6000_results.py", "--study-root", str(root), "--captures", str(captures),
+                    "--output", str(output)]
+            with patch.object(sys, "argv", argv), patch.object(exporter.publication, "serving_data", return_value=serving_data), \
+                    patch.object(exporter.publication, "bottleneck_data", return_value=profile_data):
+                exporter.main()
+            index = publication.read(output / "index.json")
+            self.assertEqual(len(index["files"]), 6)
+            self.assertTrue((output / "Q2_K-profile-full-sections-p2048.json").is_file())
+            exported = publication.read(output / "Q4_K_M-serving-r1.json")
+            self.assertIn("study/Q4_K_M", json.dumps(exported))
+
     def test_missing_build_tools_stop_before_gpu_checks_or_build(self):
         def available(name, **kwargs):
             return None if name in ("ninja", "cmake") else "/synthetic/bin/" + name
@@ -273,6 +305,18 @@ class RTXWorkflowTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Unmatched"):
                 publication.bottleneck_data(root, captures)
 
+    def test_minimal_profile_reuses_eight_captures_and_extrapolates_layers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = make_study(Path(directory))
+            captures = make_captures(root, minimal=True)
+            data = publication.bottleneck_data(root, captures)
+            self.assertEqual(data["analysis_scope"], "sampled_gate_up_extrapolation")
+            self.assertEqual(data["operator_audit"]["captures"], 8)
+            self.assertEqual(len(data["operator_points"]), 8)
+            self.assertEqual(data["layer_counts"], [41, 39])
+            self.assertEqual(len(data["extrapolation_rows"]), 8)
+            self.assertEqual(data["cases"][0]["projected_gate_up_launches"], 82)
+
     def test_missing_operator_capture_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = make_study(Path(directory))
@@ -314,6 +358,31 @@ class RTXWorkflowTests(unittest.TestCase):
                 publication.serving_data(root, allow_missing=True)
             with self.assertRaisesRegex(ValueError, "historical"):
                 publication.destination(ROOT / "paper/poster", root, "test")
+
+    def test_complete_poster_combines_two_disjoint_git_export_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pairs = (("a", ("IQ1_M", "Q8_0")), ("b", ("Q2_K", "Q4_K_M")))
+            for shard, formats in pairs:
+                target = root / shard
+                target.mkdir()
+                for quant in formats:
+                    rows, coverage = [], []
+                    for concurrency in (8, 16, 32):
+                        for prompt in (2048, 4096, 8192, 16384, 32768):
+                            rows.append({"format": quant, "concurrency": concurrency, "input_tokens": prompt,
+                                "ttft_p95_s": prompt / 2048, "output_tok_s": 1000 / concurrency,
+                                "tpot_p95_ms": 2, "thermal_limit_observed": False})
+                            coverage.append({"format": quant, "concurrency": str(concurrency),
+                                             "input_tokens": str(prompt), "status": "complete"})
+                    put(target / f"{quant}-serving-r1.json", {"hardware": "rtxpro6000", "format": quant,
+                        "repetitions": 1, "rows": rows, "coverage": coverage,
+                        "devices": [{"name": GPU}, {"name": GPU}]})
+                files = [{"path": path.name, "sha256": publication.sha(path)}
+                         for path in target.glob("*-serving-r1.json")]
+                put(target / "index.json", {"files": files})
+            poster = publication.build_poster_exports([root / "a", root / "b"], root / "poster")
+            self.assertTrue(poster.read_bytes().startswith(b"%PDF"))
 
     def test_both_pdf_builders_render_synthetic_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
