@@ -1,0 +1,12 @@
+{
+  "source": "saved counter reports; no new GPU execution",
+  "validation_samples": 40,
+  "maximum_relative_fp32_rate_error": 3.839397821003843e-06,
+  "plotted_operator_configuration_groups": 31,
+  "captured_launches_used": 120,
+  "roof_source": "https://www.nvidia.com/content/dam/en-zz/Solutions/products/workstations/nvidia-rtx-a6000-datasheet.pdf",
+  "peak_fp32_flops_per_s": 38700000000000.0,
+  "peak_dram_bytes_per_s": 768000000000.0,
+  "formula": "FADD + FMUL + 2*FFMA from predicated-on thread instructions",
+  "exclusions": "FP16, Tensor Core, integer and special-function operations"
+}

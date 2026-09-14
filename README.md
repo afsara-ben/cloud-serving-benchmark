@@ -24,6 +24,12 @@ run, no profiling, no long-context extensions, and no 70B FP16.
 For the full Nsight section suite and optional precision-specific rooflines,
 use [one-setting A100 profiling](A100_PROFILING.md) after the serving measurement.
 
+For **AMD MI300X**, use the separate [MI300X pipeline](MI300X_PIPELINE.md):
+`bash scripts/mi300x_paper_pipeline.sh` runs the 70B serving sweep, matched
+prefill/decode counter captures, four-panel poster and runtime bottlenecks report.
+`bash scripts/mi300x_pipeline.sh` provides general inference and exploratory profiling, with
+independent HIP builds, environments, process management, and result folders.
+
 ## Context and concurrency study
 
 The concise numbered plan is [FUTURE_WORK.md](FUTURE_WORK.md). It covers all three

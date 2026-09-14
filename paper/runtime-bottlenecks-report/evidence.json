@@ -1,0 +1,57 @@
+{
+  "dataset": "q2-q4-full-sections",
+  "aggregation": "five-launch medians",
+  "percentage_formula": "100 * (Q2 / Q4 - 1)",
+  "instruction_share_formula": "100 * (extra FFMA + extra I2FP) / extra total instructions",
+  "implementation_commit": "3f5e94d7c2ab2267fe39852051777fe30c1f49ef",
+  "inputs": [
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-full-sections/all-hardware-metrics.csv",
+      "sha256": "3290d8d703ab835da4d470cad2314ddccf34882fa06c46dd487b66ba7f3d75dc"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-full-sections/instruction-instances.csv",
+      "sha256": "aef2906a7814b8aaaa30664d37a9ee03f6fdfdbcc86175b6babed893874c2c3d"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-full-sections/roofline-values.csv",
+      "sha256": "0f75c9426973a94bfc0ccecefc2a4cdfa4bfe23fce8f7f2196d588d4b45724b0"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-full-sections/validation.json",
+      "sha256": "80e4ccecea0c47ce7e04077decb4fdeb8fbca68137e979ff748a833fb9051ccb"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-full-sections/README.md",
+      "sha256": "1d61f577255732f70ed905fb71d54c313985d1a85353842c06510c52c079580b"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-full-sections/operator-roofline-points.csv",
+      "sha256": "5367a60da2aa4e2743162a23d8afe147330a7099aca32407059f33c5a04a2a55"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-full-sections/operator-roofline-validation.json",
+      "sha256": "b013b9491fac28dfd7e300d2543f4516666b68970f642fde1e4afbb31c2f4c8a"
+    },
+    {
+      "path": "results/cuda-context-study/diagnostics/q2-q4-full-sections/roofline-operators.md",
+      "sha256": "04905fb5eb5b128e3a64978a21f3ce6014329d710df1cea23236f9f3a851dbec"
+    },
+    {
+      "path": "vendor/llama.cpp/ggml/src/ggml-common.h",
+      "sha256": "0061131b615c5721fc88a78feeb22c1f8c450f1c2646a317d80796a653bf595c"
+    },
+    {
+      "path": "vendor/llama.cpp/ggml/src/ggml-cuda/mmq-vec-dot.cuh",
+      "sha256": "58e87f162ec6e4bd5d23e99aeac76f3dd0e13a6cdfe01165cae806b51fe9ae65"
+    },
+    {
+      "path": "vendor/llama.cpp/ggml/src/ggml-cuda/vecdotq.cuh",
+      "sha256": "a7fd4281ad9f0a6d9373c776325411d2522e0b62ffae2c16e91e667a1af251fe"
+    },
+    {
+      "path": "vendor/llama.cpp/ggml/src/ggml-cuda/mmq.cuh",
+      "sha256": "3937b79ec31e6fcb43c6e03aaeecf3af51ae9f63b220be571edc9fd89b4749c9"
+    }
+  ]
+}

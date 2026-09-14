@@ -1,0 +1,37 @@
+phase,gpu,metric,label,Q4_K_M,Q2_K,relative_change_percent,absolute_change,source_divisor,statistic,launches_per_format
+prefill,0,gpu__time_duration.sum,Kernel duration (ms),2.258528,3.36944,49.187435356125754,1.110912,1000000.0,median,5
+prefill,0,sm__inst_executed.sum,Executed instructions (M),683.698176,1159.624704,69.6106183556646,475.9265280000001,1000000.0,median,5
+prefill,0,dram__bytes_read.sum,DRAM reads (MB),184.50944,129.167744,-29.993964536448658,-55.34169600000001,1000000.0,median,5
+prefill,0,sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed,"Tensor pipeline (% peak, elapsed)",35.52,26.2,-26.238738738738743,-9.320000000000004,1,median,5
+prefill,0,sm__pipe_alu_cycles_active.avg.pct_of_peak_sustained_elapsed,"ALU pipeline (% peak, elapsed)",21.98,29.39,33.71246587807097,7.41,1,median,5
+prefill,0,sm__inst_executed.avg.per_cycle_active,IPC (active cycles),2.14,2.37,10.747663551401864,0.22999999999999998,1,median,5
+prefill,0,sm__warps_active.avg.pct_of_peak_sustained_active,Achieved occupancy (%),16.67,16.72,0.29994001199757925,0.04999999999999716,1,median,5
+prefill,0,launch__registers_per_thread,Registers per thread,221.0,254.0,14.93212669683257,33.0,1,median,5
+prefill,0,launch__occupancy_limit_registers,Register-limited blocks per SM,1.0,1.0,0.0,0.0,1,median,5
+prefill,1,gpu__time_duration.sum,Kernel duration (ms),2.245792,3.335456,48.520254769809526,1.0896640000000004,1000000.0,median,5
+prefill,1,sm__inst_executed.sum,Executed instructions (M),683.698176,1159.624704,69.6106183556646,475.9265280000001,1000000.0,median,5
+prefill,1,dram__bytes_read.sum,DRAM reads (MB),184.849536,129.270528,-30.06716121808387,-55.57900799999999,1000000.0,median,5
+prefill,1,sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed,"Tensor pipeline (% peak, elapsed)",35.52,26.2,-26.238738738738743,-9.320000000000004,1,median,5
+prefill,1,sm__pipe_alu_cycles_active.avg.pct_of_peak_sustained_elapsed,"ALU pipeline (% peak, elapsed)",21.98,29.39,33.71246587807097,7.41,1,median,5
+prefill,1,sm__inst_executed.avg.per_cycle_active,IPC (active cycles),2.14,2.37,10.747663551401864,0.22999999999999998,1,median,5
+prefill,1,sm__warps_active.avg.pct_of_peak_sustained_active,Achieved occupancy (%),16.68,16.7,0.11990407673860837,0.019999999999999574,1,median,5
+prefill,1,launch__registers_per_thread,Registers per thread,221.0,254.0,14.93212669683257,33.0,1,median,5
+prefill,1,launch__occupancy_limit_registers,Register-limited blocks per SM,1.0,1.0,0.0,0.0,1,median,5
+decode,0,gpu__time_duration.sum,Kernel duration (ms),0.321664,0.402464,25.119379228014328,0.08079999999999998,1000000.0,median,5
+decode,0,sm__inst_executed.sum,Executed instructions (M),131.24608,177.494016,35.23757509557617,46.24793599999998,1000000.0,median,5
+decode,0,dram__bytes_read.sum,DRAM reads (MB),132.230528,77.17312,-41.63744093950831,-55.057407999999995,1000000.0,median,5
+decode,0,sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed,"Tensor pipeline (% peak, elapsed)",0.0,0.0,,0.0,1,median,5
+decode,0,sm__pipe_alu_cycles_active.avg.pct_of_peak_sustained_elapsed,"ALU pipeline (% peak, elapsed)",45.36,50.05,10.339506172839496,4.689999999999998,1,median,5
+decode,0,sm__inst_executed.avg.per_cycle_active,IPC (active cycles),2.93,3.04,3.754266211604085,0.10999999999999988,1,median,5
+decode,0,sm__warps_active.avg.pct_of_peak_sustained_active,Achieved occupancy (%),31.79,23.83,-25.039320541050646,-7.960000000000001,1,median,5
+decode,0,launch__registers_per_thread,Registers per thread,125.0,151.0,20.799999999999997,26.0,1,median,5
+decode,0,launch__occupancy_limit_registers,Register-limited blocks per SM,8.0,6.0,-25.0,-2.0,1,median,5
+decode,1,gpu__time_duration.sum,Kernel duration (ms),0.31792,0.400256,25.898339204831423,0.08233600000000002,1000000.0,median,5
+decode,1,sm__inst_executed.sum,Executed instructions (M),131.24608,177.494016,35.23757509557617,46.24793599999998,1000000.0,median,5
+decode,1,dram__bytes_read.sum,DRAM reads (MB),132.226688,77.172224,-41.636423654504604,-55.054463999999996,1000000.0,median,5
+decode,1,sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed,"Tensor pipeline (% peak, elapsed)",0.0,0.0,,0.0,1,median,5
+decode,1,sm__pipe_alu_cycles_active.avg.pct_of_peak_sustained_elapsed,"ALU pipeline (% peak, elapsed)",45.31,49.93,10.196424630324419,4.619999999999997,1,median,5
+decode,1,sm__inst_executed.avg.per_cycle_active,IPC (active cycles),2.92,3.04,4.109589041095885,0.1200000000000001,1,median,5
+decode,1,sm__warps_active.avg.pct_of_peak_sustained_active,Achieved occupancy (%),31.72,23.85,-24.8108448928121,-7.869999999999997,1,median,5
+decode,1,launch__registers_per_thread,Registers per thread,125.0,151.0,20.799999999999997,26.0,1,median,5
+decode,1,launch__occupancy_limit_registers,Register-limited blocks per SM,8.0,6.0,-25.0,-2.0,1,median,5

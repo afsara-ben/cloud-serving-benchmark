@@ -4,6 +4,9 @@ Use `scripts/profile_a100_setting.py` after measuring the desired setting with
 the [serving launcher](A100_SERVING.md). It profiles one saved setting at a time,
 reusing that cell's model, input messages, token counts, slots and GPU split.
 
+For the scalar FP32 operator figure, use the [roofline collector](A100_ROOFLINE.md).
+It targets operators individually and exports the counts, coordinates and PDF.
+
 The default counter collection requests these full Nsight Compute sections in
 one capture:
 

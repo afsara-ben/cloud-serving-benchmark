@@ -32,6 +32,11 @@ from report_context_study import PIN
 from report_serving import CONCURRENCIES, PROMPTS
 from run_a100_serving import check_devices
 
+SCALAR_ROOFLINE_METRICS = (
+    "gpu__time_duration.sum", "dram__bytes_read.sum", "dram__bytes_write.sum",
+    "sass__thread_inst_executed_true_per_opcode",
+)
+
 
 def load_cell(directory):
     directory = directory.resolve()
@@ -65,13 +70,21 @@ def capture_settings(args, gpu_count):
     tool = "nsys" if args.action == "trace" else "ncu"
     if tool == "nsys":
         return {"PROFILE_TOOL": tool, "PROFILE_EXPECTED_DEVICES": ",".join(map(str, range(gpu_count)))}
-    collection = a100_section_collection(args.roofline)
+    if getattr(args, "scalar_roofline", False):
+        if args.roofline:
+            raise ValueError("--scalar-roofline uses InstructionStats; omit --roofline")
+        collection = {"metrics": ",".join(SCALAR_ROOFLINE_METRICS), "sections": ["InstructionStats"]}
+    else:
+        collection = a100_section_collection(args.roofline)
+    nvtx = f"regex:csb_batch:phase={args.phase}:.*/"
+    if getattr(args, "operation_regex", None):
+        nvtx = f"regex:csb_batch:phase={args.phase}:.*/*/{args.operation_regex}"
     return {"PROFILE_TOOL": tool, "PROFILE_METRICS": collection["metrics"],
             "PROFILE_SECTIONS": ",".join(collection["sections"]),
             "PROFILE_DEVICES": str(args.device), "PROFILE_EXPECTED_DEVICES": str(args.device),
             "PROFILE_KERNEL_REGEX": args.kernel_regex, "PROFILE_FILTER_MODE": "global",
             "PROFILE_LAUNCH_COUNT": str(args.launch_count), "PROFILE_LAUNCH_SKIP": str(args.launch_skip),
-            "PROFILE_NVTX_INCLUDE": f"regex:csb_batch:phase={args.phase}:.*/", "PROFILE_REQUIRE_NVTX": "1",
+            "PROFILE_NVTX_INCLUDE": nvtx, "PROFILE_REQUIRE_NVTX": "1",
             "PROFILE_CACHE_CONTROL": "none", "PROFILE_CLOCK_CONTROL": "none"}
 
 
@@ -105,6 +118,9 @@ def main():
     parser.add_argument("--phase", choices=("prefill", "decode"), default="decode", help="Counter phase; trace captures both")
     parser.add_argument("--device", type=int, default=0, help="Logical counter GPU index within the saved GPU_DEVICE list")
     parser.add_argument("--kernel-regex", default="mul_mat|gemm|gemv|mma", help="Demangled kernel-name filter; refine using an optional trace")
+    parser.add_argument("--operation-regex", help="Optional inner csb_op NVTX range regex, matched within the selected phase")
+    parser.add_argument("--scalar-roofline", action="store_true",
+                        help="Collect duration, DRAM bytes and predicated-on SASS thread counts for scalar FP32 coordinates")
     parser.add_argument("--launch-count", type=int, default=5, help="Maximum total matching launches on the selected GPU")
     parser.add_argument("--launch-skip", type=int, default=0)
     parser.add_argument("--roofline", nargs="+", choices=tuple(ROOFLINE_SECTIONS), default=[], help="Optional precision-specific roofline sections")

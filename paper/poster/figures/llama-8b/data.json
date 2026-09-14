@@ -1,0 +1,972 @@
+{
+  "model": "Llama 3.1 8B",
+  "missing_values": [],
+  "selected_measured_rows": [
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 353.2124024875992,
+      "ttft_p95_s": 2.757376240006124,
+      "tpot_p95_ms": 21.83186540508496,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c8/p2048",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "704302f53b82c8b666e738d1dbd57f07d7b3779350fb1ff9e3e082d06f298e18"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 257.3248472449123,
+      "ttft_p95_s": 5.273663302494242,
+      "tpot_p95_ms": 29.53338930382043,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c8/p4096",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "ca82a52b1f169ecf2d93b24ac7d43b902d1114f0d127d556fb954720475a1fef"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 163.92281895531607,
+      "ttft_p95_s": 10.7141912362531,
+      "tpot_p95_ms": 45.53382549021666,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c8/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "cde201e739cf044928085d739dabbaad8098d711d533add533e24e35ff964e50"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 92.08640238917357,
+      "ttft_p95_s": 23.182782772244536,
+      "tpot_p95_ms": 79.66434699755175,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c8/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "ebddbce853ec506a1af62709b218ff336709b6aa52f219bafad0f8ae82804fc8"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 242.9358089900788,
+      "ttft_p95_s": 5.537251992193342,
+      "tpot_p95_ms": 64.26411701868986,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c16/p2048",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "bc723e1e81d18f1b915647c926044237ce0dc480f0b955913f66d682206bb43f"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 194.54469096895454,
+      "ttft_p95_s": 10.621247647947166,
+      "tpot_p95_ms": 78.87115310000031,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c16/p4096",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "b55cd97d90a55b60b4f5f027ddb50f9a6c42fe2e495ce7a99b3f390bf4cf9fc1"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 136.81487868196365,
+      "ttft_p95_s": 22.00610671265458,
+      "tpot_p95_ms": 112.00398455939131,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c16/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "d84ab4a495e444a438bca4bdcb5edd0242ccd91e6a2d97473320d31a0360353a"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 83.20822208915698,
+      "ttft_p95_s": 48.15586364254996,
+      "tpot_p95_ms": 182.16102597719856,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c16/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "c4a0bf66f396668fe23f2ea2f142bc9cb5a352b3ff4cb4d8af258288b577f7ee"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 32,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 350.4231107233165,
+      "ttft_p95_s": 10.921865479596452,
+      "tpot_p95_ms": 88.48505146341306,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c32/p2048",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "5abc6d29352db8bb64ab712fd18a8a60dd3879966030aa0b0448890c292618d0"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 32,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 256.1108262115467,
+      "ttft_p95_s": 21.94939833785465,
+      "tpot_p95_ms": 119.79537995373337,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c32/p4096",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "b83a05f88b634652f3765a3686a39ebf061f3d2c64cfce4d85a81d6bc7e5ea38"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 32,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 163.70164009571386,
+      "ttft_p95_s": 45.72096703819988,
+      "tpot_p95_ms": 186.38231371681866,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c32/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "9c5f652bfc01bec18e32729c69b2d957d7a93f28c3e5b48ea9dbf203e166c251"
+    },
+    {
+      "model": "8b",
+      "format": "IQ1_M",
+      "clients": 32,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 92.9851177982634,
+      "ttft_p95_s": 103.47300340924409,
+      "tpot_p95_ms": 323.47016683681125,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c32/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "True",
+      "raw_sha256": "1efd006d4086a71b6a7b25a325c878919f6c6fa5a65b602702dfb5c4a4ebab26"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 295.95077047484097,
+      "ttft_p95_s": 2.98510924150105,
+      "tpot_p95_ms": 26.16128209637212,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c8/p2048",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "7a9b84758b05021d80dbc9901405b4252c5df56a4a5ad25a5a183ab459a82458"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 221.4984961648219,
+      "ttft_p95_s": 5.673631813504471,
+      "tpot_p95_ms": 33.90767440215115,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c8/p4096",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "65ef604b36ce212898ed855d82c6b8d94769d1d00b2f1c9627006f5abd998a6b"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 145.97294592140824,
+      "ttft_p95_s": 11.592652285500662,
+      "tpot_p95_ms": 50.796296763699274,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c8/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "ec9b1eba2a09c2341f04190bf61fb2855e27a31f2fd0959b6765407ffbf218fc"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 84.25581787218277,
+      "ttft_p95_s": 25.054942760496488,
+      "tpot_p95_ms": 86.53456881556085,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c8/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "f59d477e7dbbd2f1f0ab7e4e376d338c74e1e5615ebfec0ac06ca3bce1c659eb"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 16,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 468.366731100257,
+      "ttft_p95_s": 5.780216147200553,
+      "tpot_p95_ms": 32.7296394956918,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c16/p2048",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "e38d21f4d6ca2137ab2486193b1cae7e63f018b836ae7dbf1d8a1caf5e5c8003"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 16,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 308.492584848328,
+      "ttft_p95_s": 11.203258836301393,
+      "tpot_p95_ms": 48.649264262519736,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c16/p4096",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "74930bcf2343ecd2ff2c416ad4f6f2867523b3fe17588fc997bb45408ba5f220"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 16,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 179.04269174066908,
+      "ttft_p95_s": 23.281045994949817,
+      "tpot_p95_ms": 83.85245834137854,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c16/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "a5313d6c75a66205c945ea30a0a7bb14e17f7076a5604d2f5b7ddeede99ebc23"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 16,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 93.58612026216053,
+      "ttft_p95_s": 51.105804368399546,
+      "tpot_p95_ms": 162.22920810772075,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c16/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "1ddbf95462f6b02e3cbb03091b0223ac6c04c1f7d1420f5fd5c5f387a8c2a565"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 32,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 515.2307280032351,
+      "ttft_p95_s": 11.165971873289525,
+      "tpot_p95_ms": 59.635335137597615,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c32/p2048",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "a1259d85e4d814a901ca8119cc632fa83264c61283a6b9ba0654c9a1e846151b"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 32,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 327.4533199153712,
+      "ttft_p95_s": 22.916815482843955,
+      "tpot_p95_ms": 92.90184733288879,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c32/p4096",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "f85110d2be05e8d0b6f8e08ab99315739530d6ec916c916c82805d5d72617f19"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 32,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 185.42215819850088,
+      "ttft_p95_s": 47.86032912359732,
+      "tpot_p95_ms": 165.26025890440556,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c32/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "221cb7ecebee7ba3ed4c8cc85f7787f99401380953360c137b6d18c483c41088"
+    },
+    {
+      "model": "8b",
+      "format": "Q2_K",
+      "clients": 32,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 96.65512751160327,
+      "ttft_p95_s": 108.30226948535707,
+      "tpot_p95_ms": 313.350308737371,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q2_K/c32/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "67a59f1b3506065cc917e0a62a15dfb3faddb16689c04b38e43f953bd8f48d10"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 342.02049738853975,
+      "ttft_p95_s": 2.337262834491412,
+      "tpot_p95_ms": 22.65188609197321,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c8/p2048",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "8d38fa371d9f9a48a78c80d2b7e550aec0ad2d9c7b9692ca2b0cdfe44e618930"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 257.6418780353639,
+      "ttft_p95_s": 4.4739635147525405,
+      "tpot_p95_ms": 29.259624404113328,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c8/p4096",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "9df518cdc2c9bb9658fd039a0b1cdaee82b0a195100fe71dce88fae21ccde46e"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 168.75398640686032,
+      "ttft_p95_s": 9.340624157503044,
+      "tpot_p95_ms": 44.407484927600265,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c8/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "9d5b3dce02faab3c0891f4ae33c60e0890c7452ce427210e10b8d3c1738358f1"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 96.65014331930311,
+      "ttft_p95_s": 20.55690448124733,
+      "tpot_p95_ms": 76.22402359099954,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c8/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "1235abf0df6437c6e058532a6e06c0a852585f88e36abde39caa622d49765721"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 16,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 491.7365418804386,
+      "ttft_p95_s": 4.570423573956941,
+      "tpot_p95_ms": 31.33285643582622,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c16/p2048",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "28b24b968e4e636cdb5248ec014c30a2c49f145599c5d0549470b4590514cca2"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 16,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 332.9553005510715,
+      "ttft_p95_s": 8.880569956905674,
+      "tpot_p95_ms": 45.37435623571187,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c16/p4096",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "3c145c07ea771ba2e8963e62cf56a018e1f080f2fbf3396691cdcf63bbdb7d2d"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 16,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 199.2113687305801,
+      "ttft_p95_s": 18.756511767495976,
+      "tpot_p95_ms": 75.50440736448249,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c16/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "6c9a97bc912ec211e840852674a97d3e67f0622949209309ae960d9091fad423"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 16,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 105.59929894560916,
+      "ttft_p95_s": 41.91808810320217,
+      "tpot_p95_ms": 143.3847746943344,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c16/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "a2a13823cc3d932a5e960efb6f5048930a138733121fdc9124e1748ec29ae169"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 32,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 569.5396907994699,
+      "ttft_p95_s": 8.894715415742391,
+      "tpot_p95_ms": 54.00062088355888,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c32/p2048",
+      "gpu0_thermal_limit_observed": "False",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "f052b7358384675d18285640f94b27e5cd3739c8b058d9dae727462834b3443a"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 32,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 368.97891896514597,
+      "ttft_p95_s": 17.89978064560273,
+      "tpot_p95_ms": 82.87508912857547,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c32/p4096",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "a72a00ce6a052adf202dec87cef08eb3702bfa8f76dc280ca9c9bb706fb0e091"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 32,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 210.57493757881008,
+      "ttft_p95_s": 38.79348416869979,
+      "tpot_p95_ms": 145.22862995009137,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c32/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False",
+      "raw_sha256": "298137ba8b1d3d67e39aff9837bebc488b2c7236fedb6d88d275cac92b0feba1"
+    },
+    {
+      "model": "8b",
+      "format": "Q4_K_M",
+      "clients": 32,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 110.4729809497039,
+      "ttft_p95_s": 89.99602472094628,
+      "tpot_p95_ms": 273.175521103618,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c32/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "True",
+      "raw_sha256": "f92ad48186ec66072b6cc0520a51151fdd82d749804370b06c9dd8b41c608de7"
+    }
+  ],
+  "f1_changes": [
+    {
+      "format": "Q2_K",
+      "context_tokens": 2048,
+      "ttft_change_pct": 27.718166628470307
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 2048,
+      "ttft_change_pct": 17.974589734411662
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 4096,
+      "ttft_change_pct": 26.814440815087547
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 4096,
+      "ttft_change_pct": 17.874526359116594
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 8192,
+      "ttft_change_pct": 24.110039008352913
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 8192,
+      "ttft_change_pct": 14.705302938955223
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 16384,
+      "ttft_change_pct": 21.880912485400785
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 16384,
+      "ttft_change_pct": 12.773704783191553
+    }
+  ],
+  "f3_changes": [
+    {
+      "format": "IQ1_M",
+      "context_tokens": 2048,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": -31.22104227395923
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 2048,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": -0.7896924753033385
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 4096,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": -24.397238334394466
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 4096,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": -0.47178538969855355
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 8192,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": -16.537014459678012
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 8192,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": -0.13492865789631603
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 16384,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": -9.641141438554435
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 16384,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 0.9759480072765836
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 2048,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 58.25832463581078
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 2048,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 74.09338964604429
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 4096,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 39.27525025667531
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 4096,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 47.83545964650975
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 8192,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 22.654708795878918
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 8192,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 27.02501619603681
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 16384,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 11.073778197882977
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 16384,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 14.716265241446491
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 2048,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 43.77399765073713
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 2048,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 66.5220930172689
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 4096,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 29.231824845404255
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 4096,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 43.21387570172111
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 8192,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 18.0483927948748
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 8192,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 24.78220044599173
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 16384,
+      "concurrency": 16,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 9.25932990781062
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 16384,
+      "concurrency": 32,
+      "reference_concurrency": 8,
+      "throughput_change_pct": 14.301931849944882
+    }
+  ],
+  "f3_series": [
+    {
+      "format": "IQ1_M",
+      "context_tokens": 2048,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        353.2124024875992,
+        242.9358089900788,
+        350.4231107233165
+      ]
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 4096,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        257.3248472449123,
+        194.54469096895454,
+        256.1108262115467
+      ]
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 8192,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        163.92281895531607,
+        136.81487868196365,
+        163.70164009571386
+      ]
+    },
+    {
+      "format": "IQ1_M",
+      "context_tokens": 16384,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        92.08640238917357,
+        83.20822208915698,
+        92.9851177982634
+      ]
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 2048,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        295.95077047484097,
+        468.366731100257,
+        515.2307280032351
+      ]
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 4096,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        221.4984961648219,
+        308.492584848328,
+        327.4533199153712
+      ]
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 8192,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        145.97294592140824,
+        179.04269174066908,
+        185.42215819850088
+      ]
+    },
+    {
+      "format": "Q2_K",
+      "context_tokens": 16384,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        84.25581787218277,
+        93.58612026216053,
+        96.65512751160327
+      ]
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 2048,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        342.02049738853975,
+        491.7365418804386,
+        569.5396907994699
+      ]
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 4096,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        257.6418780353639,
+        332.9553005510715,
+        368.97891896514597
+      ]
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 8192,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        168.75398640686032,
+        199.2113687305801,
+        210.57493757881008
+      ]
+    },
+    {
+      "format": "Q4_K_M",
+      "context_tokens": 16384,
+      "concurrency": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        96.65014331930311,
+        105.59929894560916,
+        110.4729809497039
+      ]
+    }
+  ],
+  "f3_encoding": {
+    "x": "concurrency",
+    "panels": "quantization",
+    "line_and_marker": "context length"
+  },
+  "f1_formula": "100 * (TTFT_format / TTFT_Q4_K_M - 1), concurrency = 8",
+  "f3_formula": "100 * (throughput_C / throughput_C8 - 1), C = 16 or 32",
+  "validation": "All 36 settings checked against raw summaries; 1344 successful requests."
+}

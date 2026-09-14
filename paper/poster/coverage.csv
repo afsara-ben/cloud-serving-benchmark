@@ -1,0 +1,49 @@
+model,format,clients,input_tokens,status,reason,source_csv,evidence
+70b,IQ1_M,8,2048,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p2048
+70b,IQ1_M,8,4096,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p4096
+70b,IQ1_M,8,8192,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p8192
+70b,IQ1_M,8,16384,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p16384
+70b,IQ1_M,16,2048,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/IQ1_M/c16/p2048
+70b,IQ1_M,16,4096,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/IQ1_M/c16/p4096
+70b,IQ1_M,16,8192,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/IQ1_M/c16/p8192
+70b,IQ1_M,16,16384,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/IQ1_M/c16/p16384
+70b,IQ1_M,32,2048,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/IQ1_M/c32/p2048
+70b,IQ1_M,32,4096,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/IQ1_M/c32/p4096
+70b,IQ1_M,32,8192,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/IQ1_M/c32/p8192
+70b,IQ1_M,32,16384,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/IQ1_M/c32/p16384
+70b,Q2_K,8,2048,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q2_K/c8/p2048
+70b,Q2_K,8,4096,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q2_K/c8/p4096
+70b,Q2_K,8,8192,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q2_K/c8/p8192
+70b,Q2_K,8,16384,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q2_K/c8/p16384
+70b,Q2_K,16,2048,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q2_K/c16/p2048
+70b,Q2_K,16,4096,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/Q2_K/c16/p4096
+70b,Q2_K,16,8192,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/Q2_K/c16/p8192
+70b,Q2_K,16,16384,capacity_estimated,"Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/Q2_K/c16/p16384
+70b,Q2_K,32,2048,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/Q2_K/c32/p2048
+70b,Q2_K,32,4096,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/Q2_K/c32/p4096
+70b,Q2_K,32,8192,capacity_estimated,"Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/Q2_K/c32/p8192
+70b,Q2_K,32,16384,capacity_estimated,"Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",results/context-study/poster-70b-20260914/report/capacity.csv,results/context-study/poster-70b-20260914/70b/Q2_K/c32/p16384
+70b,Q4_K_M,8,2048,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c8/p2048
+70b,Q4_K_M,8,4096,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c8/p4096
+70b,Q4_K_M,8,8192,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c8/p8192
+70b,Q4_K_M,8,16384,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c8/p16384
+70b,Q4_K_M,16,2048,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c16/p2048
+70b,Q4_K_M,16,4096,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c16/p4096
+70b,Q4_K_M,16,8192,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c16/p8192
+70b,Q4_K_M,16,16384,capacity_estimated,"Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c16/p16384
+70b,Q4_K_M,32,2048,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c32/p2048
+70b,Q4_K_M,32,4096,complete,"All requested repetitions passed token, placement, swap and headroom validation",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c32/p4096
+70b,Q4_K_M,32,8192,capacity_estimated,"Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c32/p8192
+70b,Q4_K_M,32,16384,capacity_estimated,"Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q4_K_M/c32/p16384
+70b,Q8_0,8,2048,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c8/p2048
+70b,Q8_0,8,4096,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c8/p4096
+70b,Q8_0,8,8192,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c8/p8192
+70b,Q8_0,8,16384,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c8/p16384
+70b,Q8_0,16,2048,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c16/p2048
+70b,Q8_0,16,4096,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c16/p4096
+70b,Q8_0,16,8192,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c16/p8192
+70b,Q8_0,16,16384,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c16/p16384
+70b,Q8_0,32,2048,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c32/p2048
+70b,Q8_0,32,4096,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c32/p4096
+70b,Q8_0,32,8192,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c32/p8192
+70b,Q8_0,32,16384,missing,No cell result,results/cuda-context-study/report/capacity.csv,results/cuda-context-study-70b/Q8_0/c32/p16384

@@ -1,0 +1,102 @@
+{
+  "status": "passed",
+  "requested_settings": 48,
+  "statuses": {
+    "complete": 25,
+    "missing": 17,
+    "capacity_estimated": 6
+  },
+  "missing_measurements_allowed": true,
+  "validated_measured_requests": 736,
+  "output_tokens_per_request": 512,
+  "matched_input_groups": [
+    {
+      "clients": 8,
+      "input_tokens": 2048,
+      "formats": [
+        "IQ1_M",
+        "Q2_K",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "clients": 8,
+      "input_tokens": 4096,
+      "formats": [
+        "IQ1_M",
+        "Q2_K",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "clients": 8,
+      "input_tokens": 8192,
+      "formats": [
+        "IQ1_M",
+        "Q2_K",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "clients": 8,
+      "input_tokens": 16384,
+      "formats": [
+        "IQ1_M",
+        "Q2_K",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "clients": 16,
+      "input_tokens": 2048,
+      "formats": [
+        "IQ1_M",
+        "Q2_K",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "clients": 16,
+      "input_tokens": 4096,
+      "formats": [
+        "IQ1_M",
+        "Q2_K",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "clients": 16,
+      "input_tokens": 8192,
+      "formats": [
+        "IQ1_M",
+        "Q2_K",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "clients": 32,
+      "input_tokens": 2048,
+      "formats": [
+        "Q2_K",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "clients": 32,
+      "input_tokens": 4096,
+      "formats": [
+        "Q2_K",
+        "Q4_K_M"
+      ]
+    }
+  ],
+  "checks": [
+    "Exact prompt/output token counts",
+    "All retained requests successful",
+    "Requested concurrency reached",
+    "No cached prompt tokens",
+    "Identical request-index/input-hash pairs across quantizations at each setting",
+    "Both posters' throughput, TTFT and TPOT values equal their raw measurements",
+    "All 48 requested settings documented; only 70B data and no synthetic values"
+  ]
+}

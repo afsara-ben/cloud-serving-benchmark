@@ -45,6 +45,16 @@ class ProfileSettingTests(unittest.TestCase):
         settings = launcher.capture_settings(self.args(action="trace"), 2)
         self.assertEqual(settings, {"PROFILE_TOOL": "nsys", "PROFILE_EXPECTED_DEVICES": "0,1"})
 
+    def test_scalar_roofline_requests_thread_counts_and_targets_operator_within_phase(self):
+        args = self.args(scalar_roofline=True, roofline=[], operation_regex=r"csb_op:role=output\.weight:.*")
+        settings = launcher.capture_settings(args, 2)
+        self.assertEqual(settings["PROFILE_SECTIONS"], "InstructionStats")
+        self.assertIn("sass__thread_inst_executed_true_per_opcode", settings["PROFILE_METRICS"])
+        self.assertEqual(settings["PROFILE_NVTX_INCLUDE"],
+                         r"regex:csb_batch:phase=decode:.*/*/csb_op:role=output\.weight:.*")
+        with self.assertRaisesRegex(ValueError, "omit --roofline"):
+            launcher.capture_settings(self.args(scalar_roofline=True), 2)
+
     def test_plan_reads_one_setting_without_gpu_probe_capture_or_output_writes(self):
         for concurrency in (8, 16, 32, 64):
             with self.subTest(concurrency=concurrency), tempfile.TemporaryDirectory() as temporary:

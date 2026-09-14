@@ -1,0 +1,335 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Runtime bottlenecks report</title><style>body{font-family:system-ui,sans-serif;color:#142c43;max-width:1080px;margin:48px auto;padding:0 28px;line-height:1.6}h1{line-height:1.2;font-size:34px}table{border-collapse:collapse;width:100%;font-size:14px;margin:18px 0 26px}th{background:#142c43;color:white;padding:10px;text-align:right}th:first-child,td:first-child{text-align:left}td{padding:9px;text-align:right;border-bottom:1px solid #dfe6ec}tr:nth-child(even){background:#f0f4f8}img{max-width:100%;height:auto}a{color:#245ba8}em{color:#526274;font-size:14px}code{font-size:12px}@media print{body{margin:0;max-width:none}table,img{break-inside:avoid}}</style><body><h1>Runtime bottlenecks of Q2 and Q4 quantization</h1>
+<p><em>Llama 70B · two RTX A6000 GPUs · eight clients · 2,048 input / 512 output tokens</em></p>
+<p><strong>Quantization-related arithmetic and conversion overhead limits Q2's runtime benefit.</strong> GPU0 prefill gate/up reads 30.0% fewer DRAM bytes yet executes 69.6% more instructions and takes 49.2% longer. Decode follows the same pattern (Table 2). Opcode counts and kernel code connect the extra instructions to finer quantization groups and scale/offset processing.</p>
+<p>Gate/up comparisons use five-launch medians from the full-section captures. GPU0 is shown unless labeled otherwise; Table 6 checks both GPUs. Q4_K_M and Q2_K are model recipes; the selected gate/up tensors use Q4_K and Q2_K respectively.</p>
+<p><em>Table 1. Prefill gate/up, GPU0; M = 28,672, N = 512, K = 8,192.</em></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th style="text-align: right;">Q4_K_M</th>
+<th style="text-align: right;">Q2_K</th>
+<th style="text-align: right;">Q2 change vs Q4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kernel duration (ms)</td>
+<td style="text-align: right;">2.259</td>
+<td style="text-align: right;">3.369</td>
+<td style="text-align: right;">+49.2%</td>
+</tr>
+<tr>
+<td>Executed instructions (M)</td>
+<td style="text-align: right;">683.698</td>
+<td style="text-align: right;">1,159.625</td>
+<td style="text-align: right;">+69.6%</td>
+</tr>
+<tr>
+<td>DRAM reads (MB)</td>
+<td style="text-align: right;">184.509</td>
+<td style="text-align: right;">129.168</td>
+<td style="text-align: right;">−30.0%</td>
+</tr>
+<tr>
+<td>Tensor pipeline (% peak, elapsed)</td>
+<td style="text-align: right;">35.52</td>
+<td style="text-align: right;">26.20</td>
+<td style="text-align: right;">−26.2% (−9.32 pp)</td>
+</tr>
+<tr>
+<td>ALU pipeline (% peak, elapsed)</td>
+<td style="text-align: right;">21.98</td>
+<td style="text-align: right;">29.39</td>
+<td style="text-align: right;">+33.7% (+7.41 pp)</td>
+</tr>
+<tr>
+<td>IPC (active cycles)</td>
+<td style="text-align: right;">2.14</td>
+<td style="text-align: right;">2.37</td>
+<td style="text-align: right;">+10.7%</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="Prefill IPC, ALU and Tensor pipeline activity, instructions, DRAM reads and duration" src="figures/prefill-actual-values.png" /></p>
+<p><em>Figure 1. Top: IPC, ALU and Tensor pipeline activity. Bottom: instructions, DRAM reads and duration. Bars use actual values on separate, zero-based axes; Q2 labels show relative percentage changes from Q4.</em></p>
+<p><strong>Prefill analysis.</strong> IPC rises 10.7% and ALU activity rises 33.7% (+7.41 percentage points), while Tensor activity falls 26.2% (−9.32 points). Higher activity accompanies 69.6% more instructions and longer execution. Table 4 attributes 74.0% of extra instructions to multiply-add and integer-to-float conversion, supporting arithmetic/conversion overhead. The measurements do not isolate each category's runtime cost; pipeline percentages describe separate resources and must not be summed as a partition of runtime.</p>
+<!-- PAGEBREAK -->
+
+<p><strong>Decode also spends more time despite lower DRAM demand.</strong> Q2's kernel duration rises from 321.664 to 402.464 µs. Its 41.6% reduction in DRAM reads therefore coexists with a 25.1% execution-time increase.</p>
+<p><em>Table 2. Decode gate/up, GPU0; M = 28,672, N = 8, K = 8,192.</em></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th style="text-align: right;">Q4_K_M</th>
+<th style="text-align: right;">Q2_K</th>
+<th style="text-align: right;">Q2 change vs Q4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kernel duration (µs)</td>
+<td style="text-align: right;">321.664</td>
+<td style="text-align: right;">402.464</td>
+<td style="text-align: right;">+25.1%</td>
+</tr>
+<tr>
+<td>Executed instructions (M)</td>
+<td style="text-align: right;">131.246</td>
+<td style="text-align: right;">177.494</td>
+<td style="text-align: right;">+35.2%</td>
+</tr>
+<tr>
+<td>DRAM reads (MB)</td>
+<td style="text-align: right;">132.231</td>
+<td style="text-align: right;">77.173</td>
+<td style="text-align: right;">−41.6%</td>
+</tr>
+<tr>
+<td>Achieved occupancy (%)</td>
+<td style="text-align: right;">31.79</td>
+<td style="text-align: right;">23.83</td>
+<td style="text-align: right;">−25.0% (−7.96 pp)</td>
+</tr>
+<tr>
+<td>Registers per thread</td>
+<td style="text-align: right;">125</td>
+<td style="text-align: right;">151</td>
+<td style="text-align: right;">+20.8%</td>
+</tr>
+<tr>
+<td>Register-limited blocks per SM</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">−25.0%</td>
+</tr>
+<tr>
+<td>Tensor pipeline (% peak, elapsed)</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.00 pp; relative change undefined</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="Decode register pressure, occupancy, work and duration" src="figures/decode-register-pressure.png" /></p>
+<p><em>Figure 2. Top row: registers per thread, the register-limited maximum blocks per SM, and achieved occupancy. Bottom row: instructions, DRAM reads and duration. Actual values and relative changes are shown on separate axes. The arrangement compares observations without assigning the slowdown to occupancy alone.</em></p>
+<p><strong>Decode analysis.</strong> Figure 2A shows register use increasing from 125 to 151 per thread (+20.8%), the register-limited block count falling from eight to six (−25.0%), and achieved occupancy falling from 31.79% to 23.83% (−25.0%; −7.96 percentage points). Figure 2B shows 35.2% more instructions and 25.1% longer duration despite 41.6% fewer DRAM reads. Together, these document greater instruction work and register pressure. Occupancy's independent latency contribution is not isolated. Neither kernel records local-memory spill traffic in these captures.</p>
+<p><strong>The same direction appears on GPU1.</strong> Prefill takes 48.5% longer with 30.1% fewer DRAM reads; decode takes 25.9% longer with 41.6% fewer DRAM reads. Instruction-count increases are identical across the two GPUs. The absolute timings are retained in Table 6.</p>
+<!-- PAGEBREAK -->
+
+<p><strong>Why Q2 executes more instructions.</strong> Q2_K uses smaller scale/offset groups, doubling the number of independently scaled groups per 256 weights. The <a href="https://github.com/ggml-org/llama.cpp/blob/3f5e94d7c2ab2267fe39852051777fe30c1f49ef/ggml/src/ggml-common.h#L293">pinned format definitions</a> establish this layout difference.</p>
+<p><em>Table 3. Quantization groups in the selected gate/up weight tensors.</em></p>
+<table>
+<thead>
+<tr>
+<th>Layout property</th>
+<th style="text-align: right;">Q4_K</th>
+<th style="text-align: right;">Q2_K</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Weights per scale/offset group</td>
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">16</td>
+</tr>
+<tr>
+<td>Groups per 256 weights</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">16</td>
+</tr>
+</tbody>
+</table>
+<p>Each group represents weights as w = s × q + b; its dot product is s × Σ(q × x) + b × Σx. The <a href="https://github.com/ggml-org/llama.cpp/blob/3f5e94d7c2ab2267fe39852051777fe30c1f49ef/ggml/src/ggml-cuda/mmq-vec-dot.cuh#L675">Q2 CUDA implementation</a> combines more separately scaled partial products and offset corrections than the <a href="https://github.com/ggml-org/llama.cpp/blob/3f5e94d7c2ab2267fe39852051777fe30c1f49ef/ggml/src/ggml-cuda/mmq-vec-dot.cuh#L313">Q4 path</a>. These operations are fused into quantized multiplication and require additional arithmetic and conversions. The measured opcode counts support this mechanism.</p>
+<p><em>Table 4. GPU0 instruction counts, in millions. FFMA = floating-point multiply-add; I2FP = integer-to-float conversion. Other opcodes include all remaining categories.</em></p>
+<table>
+<thead>
+<tr>
+<th>Phase / instruction</th>
+<th style="text-align: right;">Q4 (M)</th>
+<th style="text-align: right;">Q2 (M)</th>
+<th style="text-align: right;">Extra (M)</th>
+<th style="text-align: right;">Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prefill / FFMA</td>
+<td style="text-align: right;">234.881</td>
+<td style="text-align: right;">440.402</td>
+<td style="text-align: right;">+205.521</td>
+<td style="text-align: right;">+87.5%</td>
+</tr>
+<tr>
+<td>Prefill / I2FP</td>
+<td style="text-align: right;">117.441</td>
+<td style="text-align: right;">264.241</td>
+<td style="text-align: right;">+146.801</td>
+<td style="text-align: right;">+125.0%</td>
+</tr>
+<tr>
+<td>Prefill / Other opcodes</td>
+<td style="text-align: right;">331.377</td>
+<td style="text-align: right;">454.982</td>
+<td style="text-align: right;">+123.605</td>
+<td style="text-align: right;">+37.3%</td>
+</tr>
+<tr>
+<td>Prefill / All instructions</td>
+<td style="text-align: right;">683.698</td>
+<td style="text-align: right;">1,159.625</td>
+<td style="text-align: right;">+475.927</td>
+<td style="text-align: right;">+69.6%</td>
+</tr>
+<tr>
+<td>Decode / FFMA</td>
+<td style="text-align: right;">18.350</td>
+<td style="text-align: right;">33.030</td>
+<td style="text-align: right;">+14.680</td>
+<td style="text-align: right;">+80.0%</td>
+</tr>
+<tr>
+<td>Decode / I2FP</td>
+<td style="text-align: right;">14.680</td>
+<td style="text-align: right;">29.360</td>
+<td style="text-align: right;">+14.680</td>
+<td style="text-align: right;">+100.0%</td>
+</tr>
+<tr>
+<td>Decode / Other opcodes</td>
+<td style="text-align: right;">98.216</td>
+<td style="text-align: right;">115.104</td>
+<td style="text-align: right;">+16.888</td>
+<td style="text-align: right;">+17.2%</td>
+</tr>
+<tr>
+<td>Decode / All instructions</td>
+<td style="text-align: right;">131.246</td>
+<td style="text-align: right;">177.494</td>
+<td style="text-align: right;">+46.248</td>
+<td style="text-align: right;">+35.2%</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="Actual instruction counts and percentage increases" src="figures/instruction-overhead-actual-values.png" /></p>
+<p><em>Figure 3. Actual opcode counts; percentage changes above Q2 use Q4 as the reference. Each panel title reports the two categories' combined share of the net instruction increase.</em></p>
+<p>FFMA and I2FP contribute 352.322M of 475.927M extra prefill instructions (<strong>74.0%</strong>) and 29.360M of 46.248M extra decode instructions (<strong>63.5%</strong>). The same counts occur on GPU1. These are shares of additional instructions; the corresponding shares of runtime have not been isolated. The remaining categories reconcile exactly to the overall instruction counter.</p>
+<!-- PAGEBREAK -->
+
+<p><strong>The Tensor Core roofline provides supporting context.</strong> In prefill, Q2 moves to higher arithmetic intensity but lower tensor throughput: approximately 989 → 1,441 INT8 operations per DRAM byte and 106.5 → 80.3 TOPS. Its lower DRAM demand does not become higher tensor arithmetic throughput. The opcode breakdown and kernel source provide the direct evidence for the added arithmetic/conversion work.</p>
+<p><em>Table 5. Prefill gate/up, GPU0; dense INT8 Tensor Core arithmetic path.</em></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th style="text-align: right;">Q4_K_M</th>
+<th style="text-align: right;">Q2_K</th>
+<th style="text-align: right;">Q2 change vs Q4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tensor arithmetic intensity (ops/byte)</td>
+<td style="text-align: right;">989.0</td>
+<td style="text-align: right;">1,441.2</td>
+<td style="text-align: right;">+45.7%</td>
+</tr>
+<tr>
+<td>Executed tensor throughput (TOPS)</td>
+<td style="text-align: right;">106.493</td>
+<td style="text-align: right;">80.305</td>
+<td style="text-align: right;">−24.6%</td>
+</tr>
+<tr>
+<td>Tensor compute (% of path peak)</td>
+<td style="text-align: right;">35.523</td>
+<td style="text-align: right;">26.195</td>
+<td style="text-align: right;">−26.3% (−9.328 pp)</td>
+</tr>
+<tr>
+<td>DRAM read + write bandwidth (GB/s)</td>
+<td style="text-align: right;">107.760</td>
+<td style="text-align: right;">55.705</td>
+<td style="text-align: right;">−48.3%</td>
+</tr>
+<tr>
+<td>DRAM throughput (% of DRAM peak)</td>
+<td style="text-align: right;">14.783</td>
+<td style="text-align: right;">7.642</td>
+<td style="text-align: right;">−48.3% (−7.141 pp)</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="Prefill Tensor Core roofline" src="figures/prefill-tensor-roofline.png" /></p>
+<p><em>Figure 4. Q4 (blue circle) and Q2 (orange diamond) share one plot. Dashed blue DRAM ceilings, green compute ceilings and dotted red boundaries follow the reference figure's styling while retaining the original INT8 measurements. DRAM traffic includes reads and writes; TOPS measures executed tensor operations.</em></p>
+<p><strong>Roofline analysis.</strong> Q2's arithmetic intensity increases by 45.7%, yet tensor throughput decreases by 24.6%. DRAM throughput falls from about 14.8% to 7.6% of peak, which does not support a simple saturated-DRAM-bandwidth explanation for this prefill comparison. The plotted points are on the compute-ceiling side of their tensor-path rooflines, but their distance below that ceiling does not identify a unique limiting resource. The instruction and pipeline counters provide the additional evidence for the interpretation.</p>
+<p>The roofline covers the selected prefill kernel's dense INT8 Tensor Core work. Nominal Q2/Q4 storage precision is distinct from that arithmetic path. Scalar arithmetic, integer unpacking/correction, scheduling and other kernels are not fully described by this tensor view. The MMVQ decode kernels have zero measured tensor work, so this Tensor Core plot is not applied to decode or to the whole serving workload.</p>
+<!-- PAGEBREAK -->
+
+<p><strong>Other kernels share a scalar FP32 roofline.</strong> Figure 5 overlays Q4 and Q2 within each phase, including all 31 available operator/configuration groups from 120 saved launches.</p>
+<p><img alt="Other kernels with Q4 and Q2 overlaid in each phase" src="figures/operator-roofline-combined.png" /></p>
+<p><em>Figure 5. Prefill above, decode below; Q4 filled, Q2 hollow. Colors/shapes identify operators. All points are GPU0 except Q4's decode LM head (†, GPU1). FlashAttention retains three decode configurations per format.</em></p>
+<p>Coordinates use predicated-on scalar FP32 work (FADD + FMUL + 2 × FFMA) per DRAM read/write byte and per second. Tensor Core, FP16, integer and special-function work are excluded. Higher executed FLOP/s can reflect extra arithmetic. These exploratory captures differ from the full-section reruns; FlashAttention includes fused softmax.</p>
+<p><strong>Missing counters:</strong> Q2 V projection and LM head; both prefill LM heads; activation quantization, RMSNorm/RoPE, SiLU, residual additions, KV-cache updates and other helpers. <a href="operator-roofline-data.csv">Coordinates</a> retain kernel/configuration and sample counts; the <a href="../../results/cuda-context-study/diagnostics/q2-q4-full-sections/roofline-operators.md">source method</a> documents validation and rated per-GPU ceilings.</p>
+<!-- PAGEBREAK -->
+
+<p><strong>Both GPUs corroborate the central finding.</strong> The direction and magnitude of the changes are similar across devices, with approximately 49% longer prefill kernels and 25–26% longer decode kernels for Q2.</p>
+<p><em>Table 6. Five-launch medians from the same full-section dataset. All change columns compare Q2 against Q4.</em></p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th style="text-align: right;">GPU</th>
+<th style="text-align: right;">Q4 time (µs)</th>
+<th style="text-align: right;">Q2 time (µs)</th>
+<th style="text-align: right;">Time change</th>
+<th style="text-align: right;">Instructions</th>
+<th style="text-align: right;">DRAM reads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prefill</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2,258.528</td>
+<td style="text-align: right;">3,369.440</td>
+<td style="text-align: right;">+49.2%</td>
+<td style="text-align: right;">+69.6%</td>
+<td style="text-align: right;">−30.0%</td>
+</tr>
+<tr>
+<td>Prefill</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2,245.792</td>
+<td style="text-align: right;">3,335.456</td>
+<td style="text-align: right;">+48.5%</td>
+<td style="text-align: right;">+69.6%</td>
+<td style="text-align: right;">−30.1%</td>
+</tr>
+<tr>
+<td>Decode</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">321.664</td>
+<td style="text-align: right;">402.464</td>
+<td style="text-align: right;">+25.1%</td>
+<td style="text-align: right;">+35.2%</td>
+<td style="text-align: right;">−41.6%</td>
+</tr>
+<tr>
+<td>Decode</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">317.920</td>
+<td style="text-align: right;">400.256</td>
+<td style="text-align: right;">+25.9%</td>
+<td style="text-align: right;">+35.2%</td>
+<td style="text-align: right;">−41.6%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Measurement and reporting conventions.</strong> The saved validation records confirm all eight expected captures: two formats × two phases × two GPUs. Each capture has eight warmup requests and eight profiled requests, and pools three gate plus two up launches with matched geometry and phase. Prefill width N = 512 is a processing chunk within the 2,048-token input; decode width N = 8 counts token vectors in the matrix operation. The server retains its 41/39-layer split and FP16 KV cache. CUDA graphs are disabled for annotations; clocks are automatic and cache control is none.</p>
+<p>Percentage change = 100 × (Q2 value / Q4 value − 1). Calculations use unrounded source values, with display rounding applied afterward. For percentage-valued counters, pp denotes the absolute percentage-point difference. A positive duration change is a slowdown; a negative DRAM-read change is a traffic reduction. Relative change is undefined when both values are zero. MB and GB use decimal units; M instructions means one million instructions. Figures use separate scales because the metrics have different physical units.</p>
+<p><strong>Scope of the finding.</strong> These are kernel-level profiler replay measurements, not request latency or end-to-end throughput. The detailed gate/up comparison uses five launches from one capture per case; the broader operator roofline uses 1–5. Neither provides independent run-to-run uncertainty. GPU1 corroborates the gate/up pattern without establishing its universality across hardware or workloads. Opcode counts identify additional instruction categories, but their separate latency costs are not isolated. The other-kernel roofline describes only each kernel's scalar FP32 arithmetic.</p>
+<p><strong>Report takeaway.</strong> Q2_K's finer quantization groups increase partial-product processing, conversions and scale/offset corrections. FFMA and I2FP account for 74.0% of additional prefill instructions and 63.5% in decode. The selected kernels read fewer DRAM bytes but execute more instructions and run longer. The roofline supports the memory/compute interpretation; the instruction trace and kernel implementation identify the mechanism.</p>
+<p><strong>Source data and reproducibility.</strong> This report uses the existing <a href="../../results/cuda-context-study/diagnostics/q2-q4-full-sections/README.md">full-section capture report</a>, <a href="../../results/cuda-context-study/diagnostics/q2-q4-full-sections/all-hardware-metrics.csv">hardware metric medians</a>, <a href="../../results/cuda-context-study/diagnostics/q2-q4-full-sections/instruction-instances.csv">opcode instances</a>, <a href="../../results/cuda-context-study/diagnostics/q2-q4-full-sections/roofline-values.csv">derived roofline values</a>, <a href="../../results/cuda-context-study/diagnostics/q2-q4-full-sections/operator-roofline-points.csv">operator coordinates</a> and their saved validation records. Format and kernel references use llama.cpp commit 3f5e94d7c2ab2267fe39852051777fe30c1f49ef. The source report links raw Nsight captures. No new inference or profiling was run.</p>
+<p>The adjacent <a href="report-data.json">report-data.json</a>, <a href="comparison-data.csv">comparison-data.csv</a>, <a href="opcode-comparison-data.csv">opcode-comparison-data.csv</a>, <a href="instruction-attribution-data.csv">instruction-attribution-data.csv</a> and <a href="operator-roofline-data.csv">operator-roofline-data.csv</a> preserve figure/table inputs. <a href="evidence.json">evidence.json</a> records source hashes. Rebuild with <code>python3 paper/runtime-bottlenecks-report/build.py</code> from the repository root; dependencies are Matplotlib, NumPy, Markdown and ReportLab, with existing document libraries discovered automatically.</p></body></html>

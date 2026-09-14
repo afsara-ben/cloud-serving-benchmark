@@ -1,6 +1,6 @@
 {
-  "scope": "Four poster plots of existing serving measurements; no inference or profiling launched.",
-  "optional_64k_illustration_generated": true,
+  "scope": "Four Llama 70B plots from independently validated baseline and September 14 continuation measurements.",
+  "optional_64k_illustration_generated": false,
   "main_poster_contains_synthetic_values": false,
   "sources": [
     {
@@ -12,19 +12,147 @@
       "sha256": "538e593067e79a5f00f54fc0852de6b39e6e25820b7279ed6cadb2836e471935"
     },
     {
+      "path": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "sha256": "da5b7043b53394797a00c43bcdd64fdab1256db364893ac485507cb182c62ff0"
+    },
+    {
+      "path": "results/cuda-context-study/report/capacity.csv",
+      "sha256": "2bff1e4131db8729512645924fe158b958825c98a6da601d6b2c447f494ed9ae"
+    },
+    {
+      "path": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "sha256": "99864c1d1ee4fe76b4ad450359446c2194eeb00c394bd604dd4aa239034f3c2d"
+    },
+    {
       "path": "results/cuda-context-study-70b/Q4_K_M/c16/p16384/capacity-estimate.json",
       "sha256": "9b99bba0aa2bcef4998f8523310af5fc7c791ebecfeb7e9ce4d4859e06a61bf3"
     },
     {
-      "path": "results/cuda-context-study-70b/Q4_K_M/c8/p65536/capacity-estimate.json",
-      "sha256": "511ee4a3d72ada1f2cf2f18b8be477270589c650697016e12f43906ba81e9803"
-    },
-    {
-      "path": "results/cuda-context-study-70b/Q2_K/c8/p65536/capacity-estimate.json",
-      "sha256": "2a5c58f6124c99e18bb105abd6a6a0614cfd4cbf1b30c77cdefd895d6879014f"
+      "path": "results/context-study/poster-70b-20260914/70b/Q2_K/c16/p16384/capacity-estimate.json",
+      "sha256": "b2693bc2363e480fb3b73dfb6a07c12d3f4ef2dca1452bc8b836981483b9dce3"
     }
   ],
   "selected_measured_rows": [
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 49.42084493343997,
+      "ttft_p95_s": 25.761160439476953,
+      "tpot_p95_ms": 154.7734602763971,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p2048",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 36.63650027599104,
+      "ttft_p95_s": 48.86392615724617,
+      "tpot_p95_ms": 204.74261952836196,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p4096",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 23.94410272046145,
+      "ttft_p95_s": 96.13830088076065,
+      "tpot_p95_ms": 302.87731109781214,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 13.665042213799195,
+      "ttft_p95_s": 200.953775075257,
+      "tpot_p95_ms": 528.1202445469676,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 38.47992195952755,
+      "ttft_p95_s": 25.296681388252182,
+      "tpot_p95_ms": 200.83537781848585,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-70b/Q2_K/c8/p2048",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 30.635033323878368,
+      "ttft_p95_s": 47.46486736449879,
+      "tpot_p95_ms": 243.74779532191084,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-70b/Q2_K/c8/p4096",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 21.2334044108976,
+      "ttft_p95_s": 95.31383240524883,
+      "tpot_p95_ms": 349.57570267857653,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-70b/Q2_K/c8/p8192",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "True"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 16384,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 12.869741951396989,
+      "ttft_p95_s": 197.1071336552559,
+      "tpot_p95_ms": 560.5480595714207,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-70b/Q2_K/c8/p16384",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "True"
+    },
     {
       "model": "70b",
       "format": "Q4_K_M",
@@ -37,6 +165,21 @@
       "tpot_p95_ms": 168.47500149755516,
       "source_csv": "results/cuda-context-study/report/runtime.csv",
       "raw_directory": "results/cuda-context-study-70b/Q4_K_M/c8/p2048",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 16,
+      "output_tok_s": 36.716428099741215,
+      "ttft_p95_s": 37.52975744050127,
+      "tpot_p95_ms": 207.1571472783686,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-70b/Q4_K_M/c8/p4096",
       "gpu0_thermal_limit_observed": "True",
       "gpu1_thermal_limit_observed": "False"
     },
@@ -72,228 +215,123 @@
     },
     {
       "model": "70b",
-      "format": "Q2_K",
-      "clients": 8,
+      "format": "IQ1_M",
+      "clients": 16,
       "input_tokens": 2048,
       "output_tokens": 512,
-      "requests": 16,
-      "output_tok_s": 38.47992195952755,
-      "ttft_p95_s": 25.296681388252182,
-      "tpot_p95_ms": 200.83537781848585,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-70b/Q2_K/c8/p2048",
+      "requests": 32,
+      "output_tok_s": 30.0911038461902,
+      "ttft_p95_s": 52.204477302750455,
+      "tpot_p95_ms": 517.9513365021346,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/IQ1_M/c16/p2048",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": 4096,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 24.886226962472385,
+      "ttft_p95_s": 98.90327970771031,
+      "tpot_p95_ms": 613.460934126247,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/IQ1_M/c16/p4096",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": 8192,
+      "output_tokens": 512,
+      "requests": 32,
+      "output_tok_s": 18.240347860028844,
+      "ttft_p95_s": 198.9025320593966,
+      "tpot_p95_ms": 829.7203253926114,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/IQ1_M/c16/p8192",
       "gpu0_thermal_limit_observed": "True",
       "gpu1_thermal_limit_observed": "False"
     },
     {
       "model": "70b",
       "format": "Q2_K",
-      "clients": 8,
-      "input_tokens": 8192,
+      "clients": 16,
+      "input_tokens": 2048,
       "output_tokens": 512,
-      "requests": 16,
-      "output_tok_s": 21.2334044108976,
-      "ttft_p95_s": 95.31383240524883,
-      "tpot_p95_ms": 349.57570267857653,
+      "requests": 32,
+      "output_tok_s": 77.56497021356768,
+      "ttft_p95_s": 48.742721773403176,
+      "tpot_p95_ms": 194.8270473465577,
       "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-70b/Q2_K/c8/p8192",
+      "raw_directory": "results/cuda-context-study-70b/Q2_K/c16/p2048",
       "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "True"
+      "gpu1_thermal_limit_observed": "False"
     },
     {
       "model": "70b",
       "format": "Q2_K",
-      "clients": 8,
-      "input_tokens": 16384,
-      "output_tokens": 512,
-      "requests": 16,
-      "output_tok_s": 12.869741951396989,
-      "ttft_p95_s": 197.1071336552559,
-      "tpot_p95_ms": 560.5480595714207,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-70b/Q2_K/c8/p16384",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "True"
-    },
-    {
-      "model": "8b",
-      "format": "IQ1_M",
-      "clients": 8,
-      "input_tokens": 2048,
-      "output_tokens": 512,
-      "requests": 16,
-      "output_tok_s": 353.2124024875992,
-      "ttft_p95_s": 2.757376240006124,
-      "tpot_p95_ms": 21.83186540508496,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c8/p2048",
-      "gpu0_thermal_limit_observed": "False",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "IQ1_M",
-      "clients": 16,
-      "input_tokens": 2048,
-      "output_tokens": 512,
-      "requests": 32,
-      "output_tok_s": 242.9358089900788,
-      "ttft_p95_s": 5.537251992193342,
-      "tpot_p95_ms": 64.26411701868986,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c16/p2048",
-      "gpu0_thermal_limit_observed": "False",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "IQ1_M",
       "clients": 32,
       "input_tokens": 2048,
       "output_tokens": 512,
       "requests": 64,
-      "output_tok_s": 350.4231107233165,
-      "ttft_p95_s": 10.921865479596452,
-      "tpot_p95_ms": 88.48505146341306,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c32/p2048",
-      "gpu0_thermal_limit_observed": "False",
+      "output_tok_s": 87.50309606158172,
+      "ttft_p95_s": 96.31195209729482,
+      "tpot_p95_ms": 348.4815545520765,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/Q2_K/c32/p2048",
+      "gpu0_thermal_limit_observed": "True",
       "gpu1_thermal_limit_observed": "False"
     },
     {
-      "model": "8b",
-      "format": "IQ1_M",
-      "clients": 8,
-      "input_tokens": 4096,
-      "output_tokens": 512,
-      "requests": 16,
-      "output_tok_s": 257.3248472449123,
-      "ttft_p95_s": 5.273663302494242,
-      "tpot_p95_ms": 29.53338930382043,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c8/p4096",
-      "gpu0_thermal_limit_observed": "False",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "IQ1_M",
+      "model": "70b",
+      "format": "Q2_K",
       "clients": 16,
       "input_tokens": 4096,
       "output_tokens": 512,
       "requests": 32,
-      "output_tok_s": 194.54469096895454,
-      "ttft_p95_s": 10.621247647947166,
-      "tpot_p95_ms": 78.87115310000031,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c16/p4096",
-      "gpu0_thermal_limit_observed": "False",
+      "output_tok_s": 49.94552355946845,
+      "ttft_p95_s": 93.84472502965654,
+      "tpot_p95_ms": 295.49010974531774,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/Q2_K/c16/p4096",
+      "gpu0_thermal_limit_observed": "True",
       "gpu1_thermal_limit_observed": "False"
     },
     {
-      "model": "8b",
-      "format": "IQ1_M",
+      "model": "70b",
+      "format": "Q2_K",
       "clients": 32,
       "input_tokens": 4096,
       "output_tokens": 512,
       "requests": 64,
-      "output_tok_s": 256.1108262115467,
-      "ttft_p95_s": 21.94939833785465,
-      "tpot_p95_ms": 119.79537995373337,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c32/p4096",
+      "output_tok_s": 53.90289082256427,
+      "ttft_p95_s": 188.98152708103441,
+      "tpot_p95_ms": 560.5800605726781,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/Q2_K/c32/p4096",
       "gpu0_thermal_limit_observed": "True",
       "gpu1_thermal_limit_observed": "False"
     },
     {
-      "model": "8b",
-      "format": "IQ1_M",
-      "clients": 8,
-      "input_tokens": 8192,
-      "output_tokens": 512,
-      "requests": 16,
-      "output_tok_s": 163.92281895531607,
-      "ttft_p95_s": 10.7141912362531,
-      "tpot_p95_ms": 45.53382549021666,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c8/p8192",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "IQ1_M",
+      "model": "70b",
+      "format": "Q2_K",
       "clients": 16,
       "input_tokens": 8192,
       "output_tokens": 512,
       "requests": 32,
-      "output_tok_s": 136.81487868196365,
-      "ttft_p95_s": 22.00610671265458,
-      "tpot_p95_ms": 112.00398455939131,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c16/p8192",
+      "output_tok_s": 28.651322619520897,
+      "ttft_p95_s": 190.67826456854672,
+      "tpot_p95_ms": 517.2379850631108,
+      "source_csv": "results/context-study/poster-70b-20260914/report/runtime.csv",
+      "raw_directory": "results/context-study/poster-70b-20260914/70b/Q2_K/c16/p8192",
       "gpu0_thermal_limit_observed": "True",
       "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "IQ1_M",
-      "clients": 32,
-      "input_tokens": 8192,
-      "output_tokens": 512,
-      "requests": 64,
-      "output_tok_s": 163.70164009571386,
-      "ttft_p95_s": 45.72096703819988,
-      "tpot_p95_ms": 186.38231371681866,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c32/p8192",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "IQ1_M",
-      "clients": 8,
-      "input_tokens": 16384,
-      "output_tokens": 512,
-      "requests": 16,
-      "output_tok_s": 92.08640238917357,
-      "ttft_p95_s": 23.182782772244536,
-      "tpot_p95_ms": 79.66434699755175,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c8/p16384",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "IQ1_M",
-      "clients": 16,
-      "input_tokens": 16384,
-      "output_tokens": 512,
-      "requests": 32,
-      "output_tok_s": 83.20822208915698,
-      "ttft_p95_s": 48.15586364254996,
-      "tpot_p95_ms": 182.16102597719856,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c16/p16384",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "IQ1_M",
-      "clients": 32,
-      "input_tokens": 16384,
-      "output_tokens": 512,
-      "requests": 64,
-      "output_tok_s": 92.9851177982634,
-      "ttft_p95_s": 103.47300340924409,
-      "tpot_p95_ms": 323.47016683681125,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/IQ1_M/c32/p16384",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "True"
     },
     {
       "model": "70b",
@@ -307,6 +345,21 @@
       "tpot_p95_ms": 182.21935448044258,
       "source_csv": "results/cuda-context-study/report/runtime.csv",
       "raw_directory": "results/cuda-context-study-70b/Q4_K_M/c16/p2048",
+      "gpu0_thermal_limit_observed": "True",
+      "gpu1_thermal_limit_observed": "False"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 32,
+      "input_tokens": 2048,
+      "output_tokens": 512,
+      "requests": 64,
+      "output_tok_s": 104.60006086469701,
+      "ttft_p95_s": 75.3083438231064,
+      "tpot_p95_ms": 291.83461105184955,
+      "source_csv": "results/cuda-context-study/report/runtime.csv",
+      "raw_directory": "results/cuda-context-study-70b/Q4_K_M/c32/p2048",
       "gpu0_thermal_limit_observed": "True",
       "gpu1_thermal_limit_observed": "False"
     },
@@ -328,15 +381,15 @@
     {
       "model": "70b",
       "format": "Q4_K_M",
-      "clients": 8,
+      "clients": 32,
       "input_tokens": 4096,
       "output_tokens": 512,
-      "requests": 16,
-      "output_tok_s": 36.716428099741215,
-      "ttft_p95_s": 37.52975744050127,
-      "tpot_p95_ms": 207.1571472783686,
+      "requests": 64,
+      "output_tok_s": 65.01202945477284,
+      "ttft_p95_s": 148.44348687794187,
+      "tpot_p95_ms": 464.62900839117816,
       "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-70b/Q4_K_M/c8/p4096",
+      "raw_directory": "results/cuda-context-study-70b/Q4_K_M/c32/p4096",
       "gpu0_thermal_limit_observed": "True",
       "gpu1_thermal_limit_observed": "False"
     },
@@ -354,188 +407,1013 @@
       "raw_directory": "results/cuda-context-study-70b/Q4_K_M/c16/p8192",
       "gpu0_thermal_limit_observed": "True",
       "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "FP16",
-      "clients": 32,
-      "input_tokens": 2048,
-      "output_tokens": 512,
-      "requests": 64,
-      "output_tok_s": 471.4167189200238,
-      "ttft_p95_s": 8.644858636246498,
-      "tpot_p95_ms": 65.51493356280473,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/FP16/c32/p2048",
-      "gpu0_thermal_limit_observed": "False",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "Q4_K_M",
-      "clients": 32,
-      "input_tokens": 2048,
-      "output_tokens": 512,
-      "requests": 64,
-      "output_tok_s": 569.5396907994699,
-      "ttft_p95_s": 8.894715415742391,
-      "tpot_p95_ms": 54.00062088355888,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c32/p2048",
-      "gpu0_thermal_limit_observed": "False",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "FP16",
-      "clients": 32,
-      "input_tokens": 4096,
-      "output_tokens": 512,
-      "requests": 64,
-      "output_tok_s": 328.23451854548256,
-      "ttft_p95_s": 17.217383002640414,
-      "tpot_p95_ms": 93.28012912092036,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/FP16/c32/p4096",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "Q4_K_M",
-      "clients": 32,
-      "input_tokens": 4096,
-      "output_tokens": 512,
-      "requests": 64,
-      "output_tok_s": 368.97891896514597,
-      "ttft_p95_s": 17.89978064560273,
-      "tpot_p95_ms": 82.87508912857547,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c32/p4096",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "FP16",
-      "clients": 32,
-      "input_tokens": 8192,
-      "output_tokens": 512,
-      "requests": 64,
-      "output_tok_s": 199.33938377672104,
-      "ttft_p95_s": 37.3049974094596,
-      "tpot_p95_ms": 153.0415823587003,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/FP16/c32/p8192",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "True"
-    },
-    {
-      "model": "8b",
-      "format": "Q4_K_M",
-      "clients": 32,
-      "input_tokens": 8192,
-      "output_tokens": 512,
-      "requests": 64,
-      "output_tok_s": 210.57493757881008,
-      "ttft_p95_s": 38.79348416869979,
-      "tpot_p95_ms": 145.22862995009137,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c32/p8192",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "FP16",
-      "clients": 32,
-      "input_tokens": 16384,
-      "output_tokens": 512,
-      "requests": 64,
-      "output_tok_s": 108.96412961401708,
-      "ttft_p95_s": 86.89305933524737,
-      "tpot_p95_ms": 275.3837642700668,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/FP16/c32/p16384",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "True"
-    },
-    {
-      "model": "8b",
-      "format": "Q4_K_M",
-      "clients": 32,
-      "input_tokens": 16384,
-      "output_tokens": 512,
-      "requests": 64,
-      "output_tok_s": 110.4729809497039,
-      "ttft_p95_s": 89.99602472094628,
-      "tpot_p95_ms": 273.175521103618,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c32/p16384",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "True"
-    },
-    {
-      "model": "8b",
-      "format": "Q4_K_M",
-      "clients": 8,
-      "input_tokens": 16384,
-      "output_tokens": 512,
-      "requests": 16,
-      "output_tok_s": 96.65014331930311,
-      "ttft_p95_s": 20.55690448124733,
-      "tpot_p95_ms": 76.22402359099954,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c8/p16384",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "Q4_K_M",
-      "clients": 8,
-      "input_tokens": 65536,
-      "output_tokens": 512,
-      "requests": 8,
-      "output_tok_s": 20.7120585531458,
-      "ttft_p95_s": 144.47102917794837,
-      "tpot_p95_ms": 319.8240972676045,
-      "source_csv": "results/cuda-context-study/report/capacity-extension.csv",
-      "raw_directory": "results/cuda-context-study-8b/Q4_K_M/c8/p65536",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "True"
-    },
-    {
-      "model": "8b",
-      "format": "Q2_K",
-      "clients": 8,
-      "input_tokens": 16384,
-      "output_tokens": 512,
-      "requests": 16,
-      "output_tok_s": 84.25581787218277,
-      "ttft_p95_s": 25.054942760496488,
-      "tpot_p95_ms": 86.53456881556085,
-      "source_csv": "results/cuda-context-study/report/runtime.csv",
-      "raw_directory": "results/cuda-context-study-8b/Q2_K/c8/p16384",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "False"
-    },
-    {
-      "model": "8b",
-      "format": "Q2_K",
-      "clients": 8,
-      "input_tokens": 65536,
-      "output_tokens": 512,
-      "requests": 8,
-      "output_tok_s": 18.755888270859028,
-      "ttft_p95_s": 163.25990106155368,
-      "tpot_p95_ms": 354.0754780647876,
-      "source_csv": "results/cuda-context-study/report/capacity-extension.csv",
-      "raw_directory": "results/cuda-context-study-8b/Q2_K/c8/p65536",
-      "gpu0_thermal_limit_observed": "True",
-      "gpu1_thermal_limit_observed": "False"
     }
   ],
-  "f3_formula": "100 * (throughput_C16 / throughput_C8 - 1)",
-  "f4_formula": "100 * (throughput_Q4_K_M / throughput_FP16 - 1)"
+  "f1_comparison": {
+    "model": "70b",
+    "clients": 8,
+    "formats": [
+      "IQ1_M",
+      "Q2_K",
+      "Q4_K_M"
+    ],
+    "metric": "TTFT p95 in seconds",
+    "percentage_labels": "100 * (format / Q4_K_M - 1), for IQ1_M and Q2_K"
+  },
+  "f3_formula": "Bar heights: raw output_tokens_per_second. Top labels: 100 * (throughput_C16 / throughput_C8 - 1).",
+  "f4_formula": "100 * (throughput_IQ1_M / throughput_Q4_K_M - 1), at concurrency = 8 and the same input length.",
+  "capacity_summary_definition": "Maximum input_tokens with a validated complete run, within the requested 2K/4K/8K/16K grid, for each format and concurrency.",
+  "f1_series": [
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": [
+        2048,
+        4096,
+        8192,
+        16384
+      ],
+      "ttft_p95_s": [
+        25.761160439476953,
+        48.86392615724617,
+        96.13830088076065,
+        200.953775075257
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": [
+        2048,
+        4096,
+        8192,
+        16384
+      ],
+      "ttft_p95_s": [
+        25.296681388252182,
+        47.46486736449879,
+        95.31383240524883,
+        197.1071336552559
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": [
+        2048,
+        4096,
+        8192,
+        16384
+      ],
+      "ttft_p95_s": [
+        19.57542139249199,
+        37.52975744050127,
+        74.88236823150146,
+        157.05637595625376
+      ]
+    }
+  ],
+  "f1_changes": [
+    {
+      "format": "Q2_K",
+      "reference": "Q4_K_M",
+      "input_tokens": 2048,
+      "ttft_change_pct": 29.22675267646877
+    },
+    {
+      "format": "IQ1_M",
+      "reference": "Q4_K_M",
+      "input_tokens": 2048,
+      "ttft_change_pct": 31.599519228523263
+    },
+    {
+      "format": "Q2_K",
+      "reference": "Q4_K_M",
+      "input_tokens": 4096,
+      "ttft_change_pct": 26.47261959992251
+    },
+    {
+      "format": "IQ1_M",
+      "reference": "Q4_K_M",
+      "input_tokens": 4096,
+      "ttft_change_pct": 30.200484867811372
+    },
+    {
+      "format": "Q2_K",
+      "reference": "Q4_K_M",
+      "input_tokens": 8192,
+      "ttft_change_pct": 27.284746271088522
+    },
+    {
+      "format": "IQ1_M",
+      "reference": "Q4_K_M",
+      "input_tokens": 8192,
+      "ttft_change_pct": 28.38576443462062
+    },
+    {
+      "format": "Q2_K",
+      "reference": "Q4_K_M",
+      "input_tokens": 16384,
+      "ttft_change_pct": 25.50087983066527
+    },
+    {
+      "format": "IQ1_M",
+      "reference": "Q4_K_M",
+      "input_tokens": 16384,
+      "ttft_change_pct": 27.950090438372488
+    }
+  ],
+  "f2_series": [
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "input_tokens": 2048,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        49.42084493343997,
+        30.0911038461902,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "input_tokens": 4096,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        36.63650027599104,
+        24.886226962472385,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "input_tokens": 8192,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        23.94410272046145,
+        18.240347860028844,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "input_tokens": 16384,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        13.665042213799195,
+        null,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "input_tokens": 2048,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        38.47992195952755,
+        77.56497021356768,
+        87.50309606158172
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "input_tokens": 4096,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        30.635033323878368,
+        49.94552355946845,
+        53.90289082256427
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "input_tokens": 8192,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        21.2334044108976,
+        28.651322619520897,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "input_tokens": 16384,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        12.869741951396989,
+        null,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "input_tokens": 2048,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        45.92047138243306,
+        83.53791388544566,
+        104.60006086469701
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "input_tokens": 4096,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        36.716428099741215,
+        56.140295593891175,
+        65.01202945477284
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "input_tokens": 8192,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        25.657969843054723,
+        33.41060861450993,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "input_tokens": 16384,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        15.537947427367172,
+        null,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "input_tokens": 2048,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "input_tokens": 4096,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "input_tokens": 8192,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "input_tokens": 16384,
+      "clients": [
+        8,
+        16,
+        32
+      ],
+      "throughput_tok_s": [
+        null,
+        null,
+        null
+      ]
+    }
+  ],
+  "f2_encoding": {
+    "x": "concurrency",
+    "y": "aggregate output tokens/s",
+    "color": "weight quantization",
+    "line_and_marker": "input tokens per request"
+  },
+  "f3_series": [
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": [
+        2048,
+        4096,
+        8192,
+        16384
+      ],
+      "throughput_tok_s": [
+        49.42084493343997,
+        36.63650027599104,
+        23.94410272046145,
+        13.665042213799195
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": [
+        2048,
+        4096,
+        8192,
+        16384
+      ],
+      "throughput_tok_s": [
+        30.0911038461902,
+        24.886226962472385,
+        18.240347860028844,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": [
+        2048,
+        4096,
+        8192,
+        16384
+      ],
+      "throughput_tok_s": [
+        38.47992195952755,
+        30.635033323878368,
+        21.2334044108976,
+        12.869741951396989
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 16,
+      "input_tokens": [
+        2048,
+        4096,
+        8192,
+        16384
+      ],
+      "throughput_tok_s": [
+        77.56497021356768,
+        49.94552355946845,
+        28.651322619520897,
+        null
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": [
+        2048,
+        4096,
+        8192,
+        16384
+      ],
+      "throughput_tok_s": [
+        45.92047138243306,
+        36.716428099741215,
+        25.657969843054723,
+        15.537947427367172
+      ]
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 16,
+      "input_tokens": [
+        2048,
+        4096,
+        8192,
+        16384
+      ],
+      "throughput_tok_s": [
+        83.53791388544566,
+        56.140295593891175,
+        33.41060861450993,
+        null
+      ]
+    }
+  ],
+  "f3_changes": [
+    {
+      "format": "IQ1_M",
+      "input_tokens": 2048,
+      "c8_to_c16_pct": -39.11252653264646
+    },
+    {
+      "format": "IQ1_M",
+      "input_tokens": 4096,
+      "c8_to_c16_pct": -32.072586696330674
+    },
+    {
+      "format": "IQ1_M",
+      "input_tokens": 8192,
+      "c8_to_c16_pct": -23.821125924081755
+    },
+    {
+      "format": "Q2_K",
+      "input_tokens": 2048,
+      "c8_to_c16_pct": 101.5725767197476
+    },
+    {
+      "format": "Q2_K",
+      "input_tokens": 4096,
+      "c8_to_c16_pct": 63.0340108706152
+    },
+    {
+      "format": "Q2_K",
+      "input_tokens": 8192,
+      "c8_to_c16_pct": 34.93513364637941
+    },
+    {
+      "format": "Q4_K_M",
+      "input_tokens": 2048,
+      "c8_to_c16_pct": 81.91867672639617
+    },
+    {
+      "format": "Q4_K_M",
+      "input_tokens": 4096,
+      "c8_to_c16_pct": 52.902388656610256
+    },
+    {
+      "format": "Q4_K_M",
+      "input_tokens": 8192,
+      "c8_to_c16_pct": 30.21532420092756
+    }
+  ],
+  "coverage": [
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 2048,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 4096,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 8192,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 8,
+      "input_tokens": 16384,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/IQ1_M/c8/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": 2048,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/IQ1_M/c16/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": 4096,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/IQ1_M/c16/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": 8192,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/IQ1_M/c16/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 16,
+      "input_tokens": 16384,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/IQ1_M/c16/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 32,
+      "input_tokens": 2048,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/IQ1_M/c32/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 32,
+      "input_tokens": 4096,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/IQ1_M/c32/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 32,
+      "input_tokens": 8192,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/IQ1_M/c32/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "IQ1_M",
+      "clients": 32,
+      "input_tokens": 16384,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/IQ1_M/c32/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 2048,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q2_K/c8/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 4096,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q2_K/c8/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 8192,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q2_K/c8/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 8,
+      "input_tokens": 16384,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q2_K/c8/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 16,
+      "input_tokens": 2048,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q2_K/c16/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 16,
+      "input_tokens": 4096,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/Q2_K/c16/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 16,
+      "input_tokens": 8192,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/Q2_K/c16/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 16,
+      "input_tokens": 16384,
+      "status": "capacity_estimated",
+      "reason": "Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/Q2_K/c16/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 32,
+      "input_tokens": 2048,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/Q2_K/c32/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 32,
+      "input_tokens": 4096,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/Q2_K/c32/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 32,
+      "input_tokens": 8192,
+      "status": "capacity_estimated",
+      "reason": "Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/Q2_K/c32/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "Q2_K",
+      "clients": 32,
+      "input_tokens": 16384,
+      "status": "capacity_estimated",
+      "reason": "Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",
+      "source_csv": "results/context-study/poster-70b-20260914/report/capacity.csv",
+      "evidence": "results/context-study/poster-70b-20260914/70b/Q2_K/c32/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": 2048,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c8/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": 4096,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c8/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": 8192,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c8/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 8,
+      "input_tokens": 16384,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c8/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 16,
+      "input_tokens": 2048,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c16/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 16,
+      "input_tokens": 4096,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c16/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 16,
+      "input_tokens": 8192,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c16/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 16,
+      "input_tokens": 16384,
+      "status": "capacity_estimated",
+      "reason": "Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c16/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 32,
+      "input_tokens": 2048,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c32/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 32,
+      "input_tokens": 4096,
+      "status": "complete",
+      "reason": "All requested repetitions passed token, placement, swap and headroom validation",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c32/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 32,
+      "input_tokens": 8192,
+      "status": "capacity_estimated",
+      "reason": "Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c32/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "Q4_K_M",
+      "clients": 32,
+      "input_tokens": 16384,
+      "status": "capacity_estimated",
+      "reason": "Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q4_K_M/c32/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 8,
+      "input_tokens": 2048,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c8/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 8,
+      "input_tokens": 4096,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c8/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 8,
+      "input_tokens": 8192,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c8/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 8,
+      "input_tokens": 16384,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c8/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 16,
+      "input_tokens": 2048,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c16/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 16,
+      "input_tokens": 4096,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c16/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 16,
+      "input_tokens": 8192,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c16/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 16,
+      "input_tokens": 16384,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c16/p16384"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 32,
+      "input_tokens": 2048,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c32/p2048"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 32,
+      "input_tokens": 4096,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c32/p4096"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 32,
+      "input_tokens": 8192,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c32/p8192"
+    },
+    {
+      "model": "70b",
+      "format": "Q8_0",
+      "clients": 32,
+      "input_tokens": 16384,
+      "status": "missing",
+      "reason": "No cell result",
+      "source_csv": "results/cuda-context-study/report/capacity.csv",
+      "evidence": "results/cuda-context-study-70b/Q8_0/c32/p16384"
+    }
+  ],
+  "grid_complete": false,
+  "missing_values_policy": "Absent measurements are labeled and never interpolated or plotted as zero. Only recorded capacity exclusions are classified as such.",
+  "continuation_launch": "results/context-study/poster-70b-20260914/launch.json",
+  "measurement_notes": [
+    "One validated run per setting; 2C requests after a discarded C-request warmup.",
+    "Same pinned server binary, workload and GPU placement; runner revisions are recorded separately.",
+    "Baseline and continuation were collected in separate sessions under automatic clocks.",
+    "Capacity exclusions are not zero-throughput measurements. No synthetic values are plotted."
+  ]
 }
