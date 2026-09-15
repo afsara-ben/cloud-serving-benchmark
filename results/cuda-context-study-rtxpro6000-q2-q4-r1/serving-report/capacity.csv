@@ -1,0 +1,31 @@
+model,format,concurrency,input_tokens,output_tokens,experiment,status,validated_repetitions,required_repetitions,requests_per_repetition,reason,evidence,validation_errors
+70b,Q2_K,8,2048,512,serving_grid,invalid,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c8/p2048,Measured HTTP window lacks GPU memory samples
+70b,Q2_K,8,4096,512,serving_grid,invalid,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c8/p4096,Measured HTTP window lacks GPU memory samples
+70b,Q2_K,8,8192,512,serving_grid,invalid,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c8/p8192,Measured HTTP window lacks GPU memory samples
+70b,Q2_K,8,16384,512,serving_grid,invalid,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c8/p16384,Measured HTTP window lacks GPU memory samples
+70b,Q2_K,8,32768,512,capacity_extension,invalid,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c8/p32768,Measured HTTP window lacks GPU memory samples
+70b,Q2_K,16,2048,512,serving_grid,invalid,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c16/p2048,Measured HTTP window lacks GPU memory samples
+70b,Q2_K,16,4096,512,serving_grid,invalid,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c16/p4096,Measured HTTP window lacks GPU memory samples
+70b,Q2_K,16,8192,512,serving_grid,invalid,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c16/p8192,Measured HTTP window lacks GPU memory samples
+70b,Q2_K,16,16384,512,serving_grid,invalid,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c16/p16384,Measured HTTP window lacks GPU memory samples
+70b,Q2_K,16,32768,512,capacity_extension,capacity_estimated,0,1,32,"Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c16/p32768,
+70b,Q2_K,32,2048,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c32/p2048,
+70b,Q2_K,32,4096,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c32/p4096,
+70b,Q2_K,32,8192,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c32/p8192,
+70b,Q2_K,32,16384,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c32/p16384,
+70b,Q2_K,32,32768,512,capacity_extension,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q2_K/c32/p32768,
+70b,Q4_K_M,8,2048,512,serving_grid,invalid,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c8/p2048,Measured HTTP window lacks GPU memory samples
+70b,Q4_K_M,8,4096,512,serving_grid,invalid,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c8/p4096,Measured HTTP window lacks GPU memory samples
+70b,Q4_K_M,8,8192,512,serving_grid,invalid,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c8/p8192,Measured HTTP window lacks GPU memory samples
+70b,Q4_K_M,8,16384,512,serving_grid,invalid,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c8/p16384,Measured HTTP window lacks GPU memory samples
+70b,Q4_K_M,8,32768,512,capacity_extension,invalid,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c8/p32768,Measured HTTP window lacks GPU memory samples
+70b,Q4_K_M,16,2048,512,serving_grid,invalid,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c16/p2048,Measured HTTP window lacks GPU memory samples
+70b,Q4_K_M,16,4096,512,serving_grid,invalid,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c16/p4096,Measured HTTP window lacks GPU memory samples
+70b,Q4_K_M,16,8192,512,serving_grid,invalid,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c16/p8192,Measured HTTP window lacks GPU memory samples
+70b,Q4_K_M,16,16384,512,serving_grid,invalid,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c16/p16384,Measured HTTP window lacks GPU memory samples
+70b,Q4_K_M,16,32768,512,capacity_extension,capacity_estimated,0,1,32,"Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c16/p32768,
+70b,Q4_K_M,32,2048,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c32/p2048,
+70b,Q4_K_M,32,4096,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c32/p4096,
+70b,Q4_K_M,32,8192,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c32/p8192,
+70b,Q4_K_M,32,16384,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c32/p16384,
+70b,Q4_K_M,32,32768,512,capacity_extension,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-q2-q4-r1-70b/Q4_K_M/c32/p32768,
