@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_utc": "2026-09-15T01:15:18.023241+00:00",
+  "generated_utc": "2026-09-15T01:27:40.436936+00:00",
   "status": "incomplete",
   "scope": {
     "schema_version": 1,
@@ -37,8 +37,8 @@
     "extension_request_waves": 2
   },
   "required_cells": 30,
-  "measured_cells": 16,
-  "capacity_exclusions": 1,
+  "measured_cells": 18,
+  "capacity_exclusions": 2,
   "unresolved_cells": [
     {
       "model": "70b",
@@ -118,51 +118,6 @@
     {
       "model": "70b",
       "format": "Q8_0",
-      "concurrency": 16,
-      "input_tokens": 8192,
-      "output_tokens": 512,
-      "experiment": "serving_grid",
-      "status": "pending",
-      "validated_repetitions": 0,
-      "required_repetitions": 1,
-      "requests_per_repetition": 32,
-      "reason": "No cell result",
-      "evidence": "../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p8192",
-      "validation_errors": "Cell and progress statuses disagree; r1: missing or invalid raw JSON"
-    },
-    {
-      "model": "70b",
-      "format": "Q8_0",
-      "concurrency": 16,
-      "input_tokens": 16384,
-      "output_tokens": 512,
-      "experiment": "serving_grid",
-      "status": "missing",
-      "validated_repetitions": 0,
-      "required_repetitions": 1,
-      "requests_per_repetition": 32,
-      "reason": "No cell result",
-      "evidence": "../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p16384",
-      "validation_errors": ""
-    },
-    {
-      "model": "70b",
-      "format": "Q8_0",
-      "concurrency": 16,
-      "input_tokens": 32768,
-      "output_tokens": 512,
-      "experiment": "capacity_extension",
-      "status": "missing",
-      "validated_repetitions": 0,
-      "required_repetitions": 1,
-      "requests_per_repetition": 32,
-      "reason": "No cell result",
-      "evidence": "../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p32768",
-      "validation_errors": ""
-    },
-    {
-      "model": "70b",
-      "format": "Q8_0",
       "concurrency": 32,
       "input_tokens": 2048,
       "output_tokens": 512,
@@ -236,6 +191,15 @@
       "validation_errors": ""
     }
   ],
-  "plots": [],
+  "plots": [
+    "plots/70b-throughput.png",
+    "plots/70b-throughput.svg",
+    "plots/70b-ttft.png",
+    "plots/70b-ttft.svg",
+    "plots/70b-tpot.png",
+    "plots/70b-tpot.svg",
+    "plots/70b-memory.png",
+    "plots/70b-memory.svg"
+  ],
   "completion_definition": "All 30 serving cells measured or capacity-excluded; profiling is outside this scope."
 }

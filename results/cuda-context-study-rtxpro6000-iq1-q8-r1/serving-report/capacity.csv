@@ -21,9 +21,9 @@ model,format,concurrency,input_tokens,output_tokens,experiment,status,validated_
 70b,Q8_0,8,32768,512,capacity_extension,complete,1,1,16,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c8/p32768,
 70b,Q8_0,16,2048,512,serving_grid,complete,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p2048,
 70b,Q8_0,16,4096,512,serving_grid,complete,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p4096,
-70b,Q8_0,16,8192,512,serving_grid,pending,0,1,32,No cell result,../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p8192,Cell and progress statuses disagree; r1: missing or invalid raw JSON
-70b,Q8_0,16,16384,512,serving_grid,missing,0,1,32,No cell result,../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p16384,
-70b,Q8_0,16,32768,512,capacity_extension,missing,0,1,32,No cell result,../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p32768,
+70b,Q8_0,16,8192,512,serving_grid,complete,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p8192,
+70b,Q8_0,16,16384,512,serving_grid,complete,1,1,32,"All requested repetitions passed token, placement, swap and headroom validation",../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p16384,
+70b,Q8_0,16,32768,512,capacity_extension,capacity_estimated,0,1,32,"Per-GPU weights plus FP16 KV plus reserved headroom exceed available VRAM, before working buffers.",../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c16/p32768,
 70b,Q8_0,32,2048,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c32/p2048,
 70b,Q8_0,32,4096,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c32/p4096,
 70b,Q8_0,32,8192,512,serving_grid,missing,0,1,64,No cell result,../cuda-context-study-rtxpro6000-iq1-q8-r1-70b/Q8_0/c32/p8192,

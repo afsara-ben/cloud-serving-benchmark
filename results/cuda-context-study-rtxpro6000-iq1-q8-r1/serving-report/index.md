@@ -1,6 +1,6 @@
 # RTX PRO 6000 Blackwell serving metrics
 
-Status: **incomplete**. 16/30 settings measured; 1 capacity-excluded; 13 unresolved.
+Status: **incomplete**. 18/30 settings measured; 2 capacity-excluded; 10 unresolved.
 
 2 GPU(s), physical indices 0, 1. Model/format scope: {'70b': ['IQ1_M', 'Q8_0']}.
 
@@ -26,3 +26,13 @@ One measured run per setting: C discarded warmup requests and 2C measured reques
 | 70b | Q8_0 | 8 | 32768 | 18868.66 | 111744.82 | 304.26 | 312.90 | 22.97 | 77.72 | 75.02 |
 | 70b | Q8_0 | 16 | 2048 | 2572.44 | 12754.82 | 94.24 | 96.35 | 160.06 | 42.69 | 41.69 |
 | 70b | Q8_0 | 16 | 4096 | 4419.42 | 23868.42 | 120.12 | 122.94 | 122.55 | 47.82 | 46.58 |
+| 70b | Q8_0 | 16 | 8192 | 6285.65 | 48416.15 | 179.54 | 183.52 | 81.63 | 58.09 | 56.34 |
+| 70b | Q8_0 | 16 | 16384 | 10699.91 | 102376.62 | 302.86 | 311.22 | 47.89 | 78.62 | 75.87 |
+
+![70b-throughput](plots/70b-throughput.png)
+
+![70b-ttft](plots/70b-ttft.png)
+
+![70b-tpot](plots/70b-tpot.png)
+
+![70b-memory](plots/70b-memory.png)
