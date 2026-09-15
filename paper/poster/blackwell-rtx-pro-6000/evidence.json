@@ -1,0 +1,17 @@
+{
+  "study_roots": [
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-iq1-q8-r1",
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-q2-q4-r1"
+  ],
+  "sources": {
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-iq1-q8-r1/serving-report/completion-audit.json": "738839f9a0cf19c860287649d721ab1ab9ed86020bc68a8c7661fe6ac659d05e",
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-iq1-q8-r1/serving-report/runtime.csv": "3396f0682e1dc159b292e258a86bcb00de63c2528075826db58f8f420f9df315",
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-iq1-q8-r1/serving-report/capacity.csv": "05f2e69ea62215e709d57b8bc5b51c7a51b4975b2f8b1255b2472622c15cee2c",
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-iq1-q8-r1/serving-report/index.md": "869b2b2a009f754f28d6081173bb77c3bfce30dce1be8eefd0d6ed0261064f83",
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-q2-q4-r1/serving-report/completion-audit.json": "98fadeee72bf30ea30af246b8af8fb64d29463872ea968d658126527edbc3a2e",
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-q2-q4-r1/serving-report/runtime.csv": "ac51c2352e1e53762716933f837dca3bab43cbf5de3eb2c63beea4942ad9068e",
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-q2-q4-r1/serving-report/capacity.csv": "e8b93f49b0cc5e057e11952fc7b9035a00cbe7eaba0290e99a86cdec5d173fbd",
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-q2-q4-r1/serving-report/index.md": "0a49a53c86990636870b9327be70661487712559d4a276c4bffc97d38288e4ac"
+  },
+  "builder_sha256": "b8e10f4be7d64e92a4436638944a2d4bae551b45ca5037f565cb10e914829c63"
+}

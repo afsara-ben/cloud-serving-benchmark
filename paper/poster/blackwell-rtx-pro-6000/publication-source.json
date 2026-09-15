@@ -1,0 +1,7 @@
+{
+  "study_roots": [
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-iq1-q8-r1",
+    "/data/home/hys4qm/cloud-serving-benchmark/results/cuda-context-study-rtxpro6000-q2-q4-r1"
+  ],
+  "kind": "runtime-cost-poster-from-serving-reports"
+}

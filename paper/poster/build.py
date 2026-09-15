@@ -745,10 +745,19 @@ if __name__ == "__main__":
     parser.add_argument("--study-root", type=Path, help="Build a new RTX PRO 6000 poster from this validated serving scope")
     parser.add_argument("--serving-exports", nargs="+", type=Path,
                         help="Build the complete RTX poster from two Git-friendly shard export directories")
+    parser.add_argument("--serving-reports", nargs="+", type=Path,
+                        help="Combine committed RTX study roots that contain validated serving-report artifacts")
     parser.add_argument("--output", type=Path, help="Separate output directory for --study-root; default beneath that study")
     args = parser.parse_args()
-    if args.study_root and args.serving_exports:
-        parser.error("Choose --study-root or --serving-exports")
+    if sum(bool(value) for value in (args.study_root, args.serving_exports, args.serving_reports)) > 1:
+        parser.error("Choose --study-root, --serving-exports, or --serving-reports")
+    if args.serving_reports:
+        if args.layout != "four" or args.include_illustration:
+            parser.error("The report-shard builder supports --layout four without synthetic illustrations")
+        sys.path.insert(0, str(ROOT / "benchmark"))
+        from rtxpro6000_publication import build_poster_report_shards
+        print(build_poster_report_shards(args.serving_reports, args.output, args.allow_missing))
+        sys.exit(0)
     if args.serving_exports:
         if args.layout != "four" or args.include_illustration or args.allow_missing:
             parser.error("The merged export builder requires the complete four-panel layout")
@@ -764,7 +773,7 @@ if __name__ == "__main__":
         print(build_poster(args.study_root, args.output, args.allow_missing))
         sys.exit(0)
     if args.output:
-        parser.error("--output requires --study-root or --serving-exports")
+        parser.error("--output requires --study-root, --serving-exports, or --serving-reports")
     if args.layout != "four" and args.include_illustration:
         parser.error("The separate 64K illustration belongs to --layout four.")
     theme()

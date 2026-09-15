@@ -1,5 +1,11 @@
 # Runtime Cost poster figures — Llama 70B
 
+The combined RTX PRO 6000 Blackwell snapshot is in
+[`blackwell-rtx-pro-6000/`](blackwell-rtx-pro-6000/), with the main
+[PDF](blackwell-rtx-pro-6000/runtime-cost-poster.pdf), [PNG](blackwell-rtx-pro-6000/runtime-cost-poster.png),
+and [editable SVG](blackwell-rtx-pro-6000/runtime-cost-poster.svg). It combines the two committed serving-report
+shards; its README records current coverage, limitations, and the rebuild command.
+
 For new measurements on two RTX PRO 6000 96 GB GPUs, follow the
 [RTX runbook](../../RTX_PRO_6000.md), then use
 `python3 paper/poster/build.py --study-root results/YOUR_STUDY`.

@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -150,6 +151,23 @@ def make_captures(root, prompt=2048, minimal=False, formats=("Q4_K_M", "Q2_K")):
 
 
 class RTXWorkflowTests(unittest.TestCase):
+    def test_incomplete_committed_report_shards_build_combined_poster_without_raw_trees(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            roots = [make_study(base / name, prompts=(2048,), formats=formats)
+                     for name, formats in (("a", ("IQ1_M", "Q8_0")), ("b", ("Q2_K", "Q4_K_M")))]
+            for root in roots:
+                serving.build_report(root, plots=False)
+                shutil.rmtree(root.parent / f"{root.name}-70b")
+            output = base / "poster"
+            poster = publication.build_poster_report_shards(roots, output, allow_missing=True)
+            data = publication.read(output / "data.json")
+            self.assertTrue(poster.read_bytes().startswith(b"%PDF"))
+            self.assertEqual(data["audit"]["status"], "incomplete")
+            self.assertEqual(data["audit"]["required_cells"], 60)
+            self.assertEqual(data["audit"]["measured_cells"], 4)
+            self.assertEqual(set(data["audit"]["scope"]["model_formats"]["70b"]), set(serving.FORMATS["70b"]))
+
     def test_two_format_shard_scope_builds_report_after_first_pilot(self):
         with tempfile.TemporaryDirectory() as directory:
             root = make_study(Path(directory), prompts=(2048,), formats=("IQ1_M", "Q8_0"))

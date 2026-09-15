@@ -20,8 +20,9 @@ from capacity import layer_devices
 from cuda_hardware import rated_roof
 
 ROOT = Path(__file__).resolve().parents[1]
-COLORS = {"IQ1_M": "#8b5fbf", "Q2_K": "#d47916", "Q4_K_M": "#247a49", "Q8_0": "#3479aa"}
+COLORS = {"IQ1_M": "#7143a5", "Q2_K": "#c66b12", "Q4_K_M": "#245ba8", "Q8_0": "#398f98"}
 Q4, Q2 = "Q4_K_M", "Q2_K"
+INK, MUTED = "#172536", "#576475"
 
 
 def read(path):
@@ -65,14 +66,26 @@ def plotting():
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 9, "pdf.fonttype": 42,
-                         "svg.fonttype": "none", "axes.spines.top": False, "axes.spines.right": False})
+    plt.rcParams.update({
+        "font.family": "DejaVu Sans", "font.size": 12, "text.color": INK,
+        "axes.labelcolor": INK, "xtick.color": MUTED, "ytick.color": MUTED,
+        "axes.edgecolor": "#b9c1ca", "axes.linewidth": .8,
+        "axes.spines.top": False, "axes.spines.right": False,
+        "axes.titleweight": "bold", "axes.labelsize": 12,
+        "xtick.labelsize": 11, "ytick.labelsize": 11,
+        "pdf.fonttype": 42, "ps.fonttype": 42, "svg.fonttype": "none",
+        "legend.frameon": False, "legend.fontsize": 11,
+    })
     return plt
 
 
 def save_figure(figure, path):
-    for suffix in ("pdf", "png", "svg"):
-        figure.savefig(path.with_suffix("." + suffix), dpi=170)
+    for suffix in ("png", "pdf", "svg"):
+        figure.savefig(path.with_suffix("." + suffix), dpi=240, bbox_inches="tight", pad_inches=.18,
+                       facecolor="white")
+        if suffix == "svg":
+            svg = path.with_suffix(".svg")
+            svg.write_text("\n".join(line.rstrip() for line in svg.read_text().splitlines()) + "\n")
 
 
 def change(before, after):
@@ -131,98 +144,202 @@ def render_poster(data, output, source_roots):
     clients = scope["concurrencies"]
     formats = scope["model_formats"]["70b"]
     lookup = {(r["format"], r["concurrency"], r["input_tokens"]): r for r in data["rows"]}
+    status = {(r["format"], int(r["concurrency"]), int(r["input_tokens"])): r["status"]
+              for r in data["coverage"]}
     plt = plotting()
     import numpy as np
     from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
     x = np.arange(len(prompts))
+    bar_x = x * 1.3
 
     def value(q, c, p, metric="output_tok_s"):
         return lookup.get((q, c, p), {}).get(metric, math.nan)
 
-    def bars(axis, positions, values, width, annotations=None, **kwargs):
-        plotted = axis.bar(positions, values, width, **kwargs)
-        axis.bar_label(plotted, labels=annotations or [f"{v:.1f}" if math.isfinite(v) else "" for v in values], fontsize=6, padding=2)
-        for pos, val in zip(positions, values):
-            if not math.isfinite(val):
-                axis.text(pos, .01, "N/A", transform=axis.get_xaxis_transform(), ha="center", rotation=90, fontsize=6)
+    def decorate(axis, title, subtitle, grid="y"):
+        axis.set_title(title, loc="left", fontsize=18, pad=37)
+        axis.text(0, 1.025, subtitle, transform=axis.transAxes, fontsize=11.5,
+                  color=MUTED, ha="left", va="bottom")
+        axis.grid(axis=grid, color="#e5e9ee", linewidth=.8)
+        axis.set_axisbelow(True)
 
     def f1(ax):
-        width = .8 / len(formats)
-        for i, q in enumerate(formats):
+        decorate(ax, "F1  Lower bits ≠ lower latency",
+                 "70B · concurrency = 8 · percentages relative to Q4_K_M")
+        shown = (("IQ1_M", -.375), (Q2, -.125), (Q4, .125), ("Q8_0", .375))
+        maximum = 0
+        for q, offset in shown:
             ys = [value(q, 8, p, "ttft_p95_s") for p in prompts]
-            annotations = []
-            for p, y in zip(prompts, ys):
-                reference = value(Q4, 8, p, "ttft_p95_s")
-                label = f"{y:.1f}" if math.isfinite(y) else ""
-                if q != Q4 and math.isfinite(y) and math.isfinite(reference):
-                    label += "\n" + percentage(change(reference, y))
-                annotations.append(label)
-            bars(ax, x + (i - (len(formats) - 1) / 2) * width,
-                 ys, width, annotations, color=COLORS[q], label=q)
-        ax.set(title="F1  TTFT at C8 (percentages relative to Q4_K_M)", ylabel="TTFT p95 (s)", xticks=x,
-               xticklabels=[f"{p // 1024}K" for p in prompts], xlabel="Input tokens")
-        ax.legend(fontsize=7, ncol=2); ax.margins(y=.2)
+            positions = bar_x + offset
+            ax.bar(positions, ys, width=.22, color=COLORS[q], label=q, zorder=3)
+            for position, y in zip(positions, ys):
+                if math.isfinite(y):
+                    maximum = max(maximum, y)
+                    ax.text(position, y + 3, f"{y:.1f}", ha="center", va="bottom", fontsize=8.2,
+                            color=COLORS[q], fontweight="bold")
+        for i, prompt in enumerate(prompts):
+            q4 = value(Q4, 8, prompt, "ttft_p95_s")
+            q2 = value(Q2, 8, prompt, "ttft_p95_s")
+            iq1 = value("IQ1_M", 8, prompt, "ttft_p95_s")
+            q8 = value("Q8_0", 8, prompt, "ttft_p95_s")
+            if not all(math.isfinite(v) for v in (q4, q2, iq1, q8)):
+                continue
+            top = max(q4, q2, iq1, q8)
+            for label, measured, color, gap in (("Q8", q8, COLORS["Q8_0"], 21),
+                                                 ("Q2", q2, COLORS[Q2], 37),
+                                                 ("IQ1", iq1, COLORS["IQ1_M"], 53)):
+                ax.text(bar_x[i], top + gap, f"{label} {change(q4, measured):+.1f}%", ha="center", va="bottom",
+                        fontsize=9, color=color, fontweight="bold")
+        ax.set_xticks(bar_x, [f"{p // 1024}K" for p in prompts])
+        ax.set_xlim(bar_x[0] - .6, bar_x[-1] + .6)
+        ax.set_ylim(0, maximum + 72)
+        ax.set_xlabel("Context length per request")
+        ax.set_ylabel("TTFT p95 (s)")
+        ax.legend(loc="upper left", ncol=4, fontsize=9.5, columnspacing=1.2, handlelength=1.3)
 
     def f2(ax):
+        decorate(ax, "F2  Higher concurrency can lower throughput",
+                 "70B · color = quantization · line / marker = input length")
+        prompt_styles = ((2048, "o", "-", True), (4096, "^", "--", True),
+                         (8192, "s", ":", True), (16384, "D", "-.", False),
+                         (32768, "P", (0, (3, 1, 1, 1)), False))
+        maximum = 0
         for q in formats:
-            for i, p in enumerate(prompts):
+            for p, marker, line, filled in prompt_styles:
                 ys = [value(q, c, p) for c in clients]
                 if any(math.isfinite(v) for v in ys):
-                    ax.plot(clients, ys, color=COLORS[q], marker="o^sDv"[i], linestyle=["-", "--", ":", "-.", "--"][i])
-        handles = [Line2D([], [], color=COLORS[q], label=q) for q in formats]
-        handles += [Line2D([], [], color="#555", marker="o^sDv"[i], linestyle="none", label=f"{p // 1024}K") for i, p in enumerate(prompts)]
-        ax.legend(handles=handles, fontsize=6, ncol=3)
-        ax.set(title="F2  Throughput versus concurrent clients", xlabel="Concurrent clients", ylabel="Output tokens/s", xticks=clients)
+                    maximum = max(maximum, *(v for v in ys if math.isfinite(v)))
+                    ax.plot(clients, ys, color=COLORS[q], marker=marker, linestyle=line, linewidth=2,
+                            markersize=6, markerfacecolor=COLORS[q] if filled else "white", markeredgewidth=1.3)
+        ax.set_xlim(6, 34)
+        ax.set_ylim(0, maximum * 1.48)
+        ax.set_xticks(clients)
+        ax.set_xlabel("Concurrency")
+        ax.set_ylabel("Aggregate output throughput (tok/s)")
+        quant_legend = ax.legend(handles=[Line2D([], [], color=COLORS[q], linewidth=2.3, label=q) for q in formats],
+                                 loc="upper left", ncol=4, fontsize=9.5)
+        ax.add_artist(quant_legend)
+        ax.legend(handles=[Line2D([], [], color=INK, marker=marker, linestyle=line,
+                                  markerfacecolor=INK if filled else "white", linewidth=1.8,
+                                  markersize=5, label=f"{p // 1024}K")
+                           for p, marker, line, filled in prompt_styles],
+                  loc="upper left", bbox_to_anchor=(0, .91), ncol=5, fontsize=9,
+                  columnspacing=1.15, handlelength=2)
+        iq8, iq16 = value("IQ1_M", 8, 2048), value("IQ1_M", 16, 2048)
+        if math.isfinite(iq8) and math.isfinite(iq16):
+            ax.annotate(f"IQ1_M at 2K: {change(iq8, iq16):+.1f}%\nconcurrency: 8 → 16", (16, iq16),
+                        xytext=(25.5, maximum * .35), textcoords="data", ha="center", va="center",
+                        fontsize=9.5, fontweight="bold", color=COLORS["IQ1_M"])
+        ax.text(.98, .04, "C32: no measurements for any format\n32K: C8 only; C16 capacity-excluded",
+                transform=ax.transAxes, ha="right", va="bottom", fontsize=8.5, color=MUTED,
+                bbox={"facecolor": "white", "edgecolor": "none", "alpha": .9, "pad": 2})
 
     def f3(ax):
-        selected = ["IQ1_M", Q2, Q4]
-        width = .8 / 6
-        for i, q in enumerate(selected):
-            for j, c in enumerate((8, 16)):
+        decorate(ax, "F3  Throughput versus concurrency",
+                 "70B · bar labels: tok/s · top labels: change from C8 to C16")
+        selected = ("IQ1_M", Q2, Q4, "Q8_0")
+        maximum = 0
+        for q, offset in zip(selected, (-.42, -.14, .14, .42)):
+            pair = {}
+            for c, shift in ((8, -.065), (16, .065)):
                 ys = [value(q, c, p) for p in prompts]
-                bars(ax, x + (i * 2 + j - 2.5) * width, ys, width, color=COLORS[q],
-                     hatch="///" if c == 8 else "", alpha=.65 if c == 8 else 1, label=f"{q} C{c}")
+                pair[c] = ys
+                positions = bar_x + offset + shift
+                measured = [(position, y) for position, y in zip(positions, ys) if math.isfinite(y)]
+                ax.bar([position for position, _ in measured], [y for _, y in measured], width=.115,
+                       facecolor="white" if c == 8 else COLORS[q], edgecolor=COLORS[q],
+                       hatch="////" if c == 8 else None, linewidth=1.1, zorder=3)
+                for position, y in zip(positions, ys):
+                    if not math.isfinite(y):
+                        ax.text(position, 2, "N/A", ha="center", va="bottom", rotation=90,
+                                fontsize=7, color=MUTED)
+                        continue
+                    maximum = max(maximum, y)
+                    ax.text(position, y + 1.4, f"{y:.1f}", ha="center", va="bottom",
+                            fontsize=7.2, fontweight="bold", color=COLORS[q])
             for index, p in enumerate(prompts):
-                a, b = value(q, 8, p), value(q, 16, p)
-                if math.isfinite(a) and math.isfinite(b):
-                    ax.annotate(percentage(change(a, b)), (x[index] + (i * 2 - 2) * width, max(a, b)),
-                                xytext=(0, 18), textcoords="offset points", ha="center", fontsize=6)
-        ax.set(title="F3  Throughput at 8 and 16 clients", ylabel="Output tokens/s", xticks=x,
-               xticklabels=[f"{p // 1024}K" for p in prompts], xlabel="Input tokens")
-        ax.legend(fontsize=6, ncol=3); ax.margins(y=.25)
+                c8, c16 = pair[8][index], pair[16][index]
+                if not (math.isfinite(c8) and math.isfinite(c16)):
+                    continue
+                y = max(c8, c16) + 8 + {"IQ1_M": 0, Q2: 0, Q4: 15, "Q8_0": 0}[q]
+                center = bar_x[index] + offset
+                ax.plot([center - .065, center - .065, center + .065, center + .065],
+                        [y - 1, y, y, y - 1], color=COLORS[q], linewidth=.9, zorder=4)
+                ax.text(center, y + 1, percentage(change(c8, c16)), ha="center", va="bottom",
+                        fontsize=8, fontweight="bold", color=COLORS[q])
+        ax.set_xticks(bar_x, [f"{p // 1024}K" for p in prompts])
+        ax.set_xlim(bar_x[0] - .6, bar_x[-1] + .6)
+        ax.set_ylim(0, maximum * 1.46)
+        ax.set_xlabel("Context length per request")
+        ax.set_ylabel("Aggregate output throughput (tok/s)")
+        quant_legend = ax.legend(handles=[Patch(facecolor=COLORS[q], label=q) for q in selected],
+                                 loc="upper left", ncol=4, fontsize=9.5, columnspacing=1.2, handlelength=1.4)
+        ax.add_artist(quant_legend)
+        ax.legend(handles=[Patch(facecolor="white", edgecolor=MUTED, hatch="////", label="Concurrency = 8"),
+                           Patch(facecolor=MUTED, label="Concurrency = 16")],
+                  loc="upper left", bbox_to_anchor=(0, .90), ncol=2, fontsize=9.5)
+        ax.text(.98, .80, "32K C16 unavailable: IQ1_M reached the headroom limit;\nQ2_K, Q4_K_M, and Q8_0 were capacity-excluded",
+                transform=ax.transAxes, ha="right", va="top", fontsize=8.5, color=MUTED,
+                bbox={"facecolor": "white", "edgecolor": "none", "alpha": .9, "pad": 2})
 
     def f4(ax):
-        for i, p in enumerate(prompts):
-            a, b = value(Q4, 8, p), value("IQ1_M", 8, p)
-            if math.isfinite(a) and math.isfinite(b):
-                ax.plot([a, b], [i, i], color="#a2a9b2", linewidth=2)
-                ax.text(max(a, b), i - .13, " " + percentage(change(a, b)), fontsize=8)
-        for q in (Q4, "IQ1_M"):
-            ax.scatter([value(q, 8, p) for p in prompts], x, color=COLORS[q], label=q)
-        ax.set(title="F4  IQ1_M throughput relative to Q4_K_M at C8", xlabel="Output tokens/s", yticks=x,
-               yticklabels=[f"{p // 1024}K" for p in prompts], ylabel="Input tokens")
-        ax.invert_yaxis(); ax.margins(x=.35, y=.2); ax.legend(fontsize=7)
+        decorate(ax, "F4  Context changes quantization gains",
+                 "70B · concurrency = 8 · IQ1_M versus Q4_K_M", grid="x")
+        largest = 0
+        positions = list(reversed(range(len(prompts))))
+        for y, prompt in zip(positions, prompts):
+            iq1, q4 = value("IQ1_M", 8, prompt), value(Q4, 8, prompt)
+            if not (math.isfinite(iq1) and math.isfinite(q4)):
+                continue
+            largest = max(largest, iq1, q4)
+            gain = change(q4, iq1)
+            ax.plot([q4, iq1], [y, y], color="#aeb9c7", linewidth=3, zorder=2)
+            ax.scatter([iq1], [y], s=85, color=COLORS["IQ1_M"], zorder=3)
+            ax.scatter([q4], [y], s=125, facecolor="none", edgecolor=COLORS[Q4], linewidth=2.2, zorder=4)
+            ax.annotate(percentage(gain), (max(q4, iq1), y), xytext=(14, 0), textcoords="offset points",
+                        va="center", fontsize=13, fontweight="bold",
+                        color=COLORS["IQ1_M"] if gain >= 0 else COLORS[Q4])
+        ax.set_xlim(0, largest * 1.32)
+        ax.set_ylim(-.45, len(prompts) - .25)
+        ax.set_yticks(positions, [f"{p // 1024}K" for p in prompts])
+        ax.set_xlabel("Aggregate output throughput (tok/s)")
+        ax.set_ylabel("Context length per request")
+        ax.legend(handles=[Line2D([], [], marker="o", linestyle="none", color=COLORS["IQ1_M"],
+                                  label="IQ1_M", markersize=7),
+                           Line2D([], [], marker="o", linestyle="none", color=COLORS[Q4], markerfacecolor="white",
+                                  markeredgewidth=2, label=Q4, markersize=9)],
+                  loc="upper left", ncol=2, fontsize=10)
+        ax.text(.98, .97, "Labels: IQ1_M / Q4_K_M − 1", transform=ax.transAxes,
+                ha="right", va="top", fontsize=9, color=MUTED)
 
-    state = "validated grid" if data["audit"]["status"] == "complete" else "INCOMPLETE SNAPSHOT"
     gpu_names = " / ".join(dict.fromkeys(d["name"] for d in data["devices"])) or "RTX PRO 6000 (no measured hardware yet)"
-    footer = (f"2 GPUs: {gpu_names}\nFP16 KV; 512 outputs/request; C warmup + 2C measured requests at every input length; one run/setting. "
-              "Missing/excluded cells have no point.\n")
+    footer = (f"Two {gpu_names} GPUs · FP16 KV · 512 outputs/request · prompt reuse off · K = 1,024 input tokens\n"
+              "One run per measured setting; missing and capacity-excluded values are unplotted. Small gaps do not establish a winner.")
     if any(r["thermal_limit_observed"] for r in data["rows"]):
-        footer += "Thermal limiting observed in saved measurements. "
-    footer += "Ratios do not establish statistical significance; k = 1024."
-    fig, axes = plt.subplots(2, 2, figsize=(16, 11))
-    for draw, ax in zip((f1, f2, f3, f4), axes.flat):
-        draw(ax); ax.set_axisbelow(True); ax.grid(axis="y", alpha=.15)
-        if draw != f4:
-            ax.set_ylim(bottom=0)
-    fig.suptitle(f"Runtime Cost - Llama 70B - {state}", fontsize=17)
-    fig.text(.5, .012, footer, ha="center", fontsize=7)
-    fig.tight_layout(rect=(0, .075, 1, .95), h_pad=3)
-    save_figure(fig, output / "runtime-cost-poster"); plt.close(fig)
-    for name, draw in zip(("f1-precision-latency", "f2-concurrency-throughput", "f3-concurrency-gain", "f4-quantization-gap"), (f1, f2, f3, f4)):
-        fig, ax = plt.subplots(figsize=(9, 5.5))
-        draw(ax); fig.tight_layout()
-        save_figure(fig, output / "figures" / name); plt.close(fig)
+        footer = footer.replace("Small gaps", "Thermal limiting occurred. Small gaps")
+    draws = (("f1-precision-latency", f1), ("f2-concurrency-throughput", f2),
+             ("f3-concurrency-gain", f3), ("f4-quantization-gap", f4))
+    for name, draw in draws:
+        fig, ax = plt.subplots(figsize=(8.6, 5.8))
+        fig.subplots_adjust(left=.12, right=.95, bottom=.18, top=.80)
+        draw(ax)
+        fig.text(.12, .03, footer, fontsize=8.5, color=MUTED, linespacing=1.55)
+        save_figure(fig, output / "figures" / name)
+        plt.close(fig)
+    fig, axes = plt.subplots(2, 2, figsize=(17.5, 12))
+    fig.subplots_adjust(left=.075, right=.96, bottom=.10, top=.84, wspace=.29, hspace=.54)
+    fig.text(.075, .973, "Runtime Cost · Llama 70B", fontsize=29, fontweight="bold")
+    fig.text(.075, .944, "Four views of measured 70B serving · IQ1_M, Q2_K, Q4_K_M and Q8_0",
+             fontsize=15, color=MUTED)
+    measured = len(data["rows"])
+    fig.text(.075, .916,
+             f"Available measurements: {measured}/{len(data['coverage'])} settings · "
+             "Missing and capacity-excluded values are unplotted; see coverage.csv.", fontsize=10.5, color=MUTED)
+    for ax, (_, draw) in zip(axes.flat, draws):
+        draw(ax)
+    fig.text(.075, .028, footer, fontsize=11, color=MUTED, linespacing=1.6)
+    save_figure(fig, output / "runtime-cost-poster")
+    plt.close(fig)
     csv_write(output / "coverage.csv", data["coverage"])
     write(output / "data.json", data)
     write(output / "evidence.json", {"study_roots": [str(root) for root in source_roots],
@@ -274,6 +391,147 @@ def build_poster_exports(export_roots, output=None):
     provenance_root = ROOT / "results/rtxpro6000-exports"
     output = destination(output or provenance_root / "combined-poster", provenance_root, "runtime-cost-poster-from-exports")
     return render_poster(data, output, [Path(root).resolve() for root in export_roots])
+
+
+def report_shard_data(study_roots, allow_missing=False):
+    """Combine validated serving-report artifacts when raw study trees are unavailable."""
+    canonical_scope = serving.scope_document(["0", "1"], "rtxpro6000")
+    prompts = canonical_scope["prompt_lengths"] + canonical_scope["capacity_lengths"]
+    clients = canonical_scope["concurrencies"]
+    expected_formats = list(canonical_scope["model_formats"]["70b"])
+    rows, coverage, sources, formats = [], [], {}, []
+
+    def integer(row, key):
+        try:
+            return int(row[key])
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(f"Invalid {key} in serving report row") from error
+
+    for root in map(Path, study_roots):
+        root = root.resolve()
+        report = root / "serving-report"
+        paths = {name: report / name for name in
+                 ("completion-audit.json", "runtime.csv", "capacity.csv", "index.md")}
+        if any(not path.is_file() for path in paths.values()):
+            raise ValueError(f"Missing committed serving-report artifacts beneath {root}")
+        audit = read(paths["completion-audit.json"])
+        scope = audit.get("scope", {})
+        devices = scope.get("device_indices", [])
+        if (scope.get("hardware") != "rtxpro6000" or devices != ["0", "1"]
+                or not serving.compatible_scope(scope, devices, "rtxpro6000")):
+            raise ValueError(f"Incompatible RTX PRO 6000 serving scope in {paths['completion-audit.json']}")
+        shard_formats = scope["model_formats"]["70b"]
+        if set(shard_formats) & set(formats):
+            raise ValueError("Serving report shards contain duplicate formats")
+        formats.extend(shard_formats)
+
+        shard_rows = context.read_csv(paths["runtime.csv"])
+        shard_coverage = context.read_csv(paths["capacity.csv"])
+        expected_keys = {(q, c, p) for q in shard_formats for c in clients for p in prompts}
+        coverage_keys = [(row.get("format"), integer(row, "concurrency"), integer(row, "input_tokens"))
+                         for row in shard_coverage]
+        runtime_keys = [(row.get("format"), integer(row, "concurrency"), integer(row, "input_tokens"))
+                        for row in shard_rows]
+        if (len(coverage_keys) != len(set(coverage_keys)) or set(coverage_keys) != expected_keys
+                or len(runtime_keys) != len(set(runtime_keys)) or not set(runtime_keys).issubset(expected_keys)):
+            raise ValueError(f"Serving report grid is incomplete or duplicated beneath {root}")
+        if any(row.get("model") != "70b" or integer(row, "output_tokens") != 512
+               or integer(row, "required_repetitions") != 1
+               or integer(row, "requests_per_repetition") != 2 * integer(row, "concurrency")
+               for row in shard_coverage):
+            raise ValueError(f"Serving report coverage protocol differs beneath {root}")
+
+        complete_keys = {key for key, row in zip(coverage_keys, shard_coverage) if row.get("status") == "complete"}
+        unresolved_keys = {key for key, row in zip(coverage_keys, shard_coverage)
+                           if row.get("status") not in context.RESOLVED_STATUSES}
+        excluded = sum(row.get("status") in context.CAPACITY_STATUSES for row in shard_coverage)
+        audit_unresolved = {(row.get("format"), integer(row, "concurrency"), integer(row, "input_tokens"))
+                            for row in audit.get("unresolved_cells", [])}
+        expected_status = "incomplete" if unresolved_keys else "complete"
+        if (set(runtime_keys) != complete_keys or audit_unresolved != unresolved_keys
+                or audit.get("required_cells") != len(expected_keys)
+                or audit.get("measured_cells") != len(shard_rows)
+                or audit.get("capacity_exclusions") != excluded
+                or audit.get("status") != expected_status):
+            raise ValueError(f"Serving report audit disagrees with its CSV files beneath {root}")
+        if not allow_missing and unresolved_keys:
+            raise ValueError(f"Combined serving grid has unresolved cells beneath {root}; pass --allow-missing for a snapshot")
+
+        for row, key in zip(shard_rows, runtime_keys):
+            q, c, p = key
+            numeric = ("ttft_p95_ms", "tpot_p95_ms", "output_tokens_per_second_mean")
+            try:
+                valid_metrics = all(math.isfinite(float(row[name])) and float(row[name]) >= 0 for name in numeric)
+            except (KeyError, TypeError, ValueError):
+                valid_metrics = False
+            if (row.get("model") != "70b" or integer(row, "output_tokens") != 512
+                    or integer(row, "repetitions") != 1 or integer(row, "successful_requests") != 2 * c
+                    or integer(row, "failed_requests") != 0 or not valid_metrics):
+                raise ValueError(f"Invalid measured serving row for {q}/c{c}/p{p} beneath {root}")
+            rows.append({"format": q, "concurrency": c, "input_tokens": p,
+                         "ttft_p95_s": float(row["ttft_p95_ms"]) / 1000,
+                         "output_tok_s": float(row["output_tokens_per_second_mean"]),
+                         "tpot_p95_ms": float(row["tpot_p95_ms"]),
+                         "source": str(paths["runtime.csv"]),
+                         "thermal_limit_observed": any(row.get(f"gpu{gpu}_thermal_limit_observed") == "True"
+                                                        for gpu in devices)})
+        coverage.extend(shard_coverage)
+        for path in paths.values():
+            sources[str(path)] = sha(path)
+
+    if set(formats) != set(expected_formats) or len(formats) != len(expected_formats):
+        raise ValueError("Serving report shards must provide each RTX 70B format exactly once")
+    order = {quant: index for index, quant in enumerate(expected_formats)}
+    rows.sort(key=lambda row: (order[row["format"]], row["concurrency"], row["input_tokens"]))
+    coverage.sort(key=lambda row: (order[row["format"]], int(row["concurrency"]), int(row["input_tokens"])))
+    unresolved = [row for row in coverage if row["status"] not in context.RESOLVED_STATUSES]
+    audit = {"schema_version": 1, "status": "incomplete" if unresolved else "complete",
+             "scope": canonical_scope, "required_cells": len(coverage), "measured_cells": len(rows),
+             "capacity_exclusions": sum(row["status"] in context.CAPACITY_STATUSES for row in coverage),
+             "unresolved_cells": unresolved}
+    return {"rows": rows, "coverage": coverage, "audit": audit,
+            "devices": [{"name": "RTX PRO 6000 Blackwell"}], "sources": sources,
+            "source_kind": "committed validated serving-report shards",
+            "limitations": ["Raw cell trees were not present, so prompt hashes and GPU edition could not be rechecked across servers."]}
+
+
+def build_poster_report_shards(study_roots, output=None, allow_missing=False):
+    roots = [Path(root).resolve() for root in study_roots]
+    data = report_shard_data(roots, allow_missing)
+    output = (output or ROOT / "paper/poster/blackwell-rtx-pro-6000").resolve()
+    marker = {"study_roots": [str(root) for root in roots], "kind": "runtime-cost-poster-from-serving-reports"}
+    owner = output / "publication-source.json"
+    if output.exists() and any(output.iterdir()) and (not owner.is_file() or read(owner) != marker):
+        raise ValueError(f"Output belongs to another publication; choose an empty directory: {output}")
+    if output.exists() and any(path.is_symlink() for path in output.rglob("*")):
+        raise ValueError("Publication output must not contain symbolic links")
+    output.mkdir(parents=True, exist_ok=True)
+    write(owner, marker)
+    (output / "figures").mkdir(exist_ok=True)
+    poster = render_poster(data, output, roots)
+    audit = data["audit"]
+    source_lines = []
+    for root in roots:
+        try:
+            label = root.relative_to(ROOT)
+        except ValueError:
+            label = root
+        source_lines.append(f"- `{label}/serving-report/`")
+    readme = ["# RTX PRO 6000 Blackwell runtime-cost poster", "",
+              f"This is an **{audit['status']} snapshot** built from {audit['measured_cells']} validated measurements, "
+              f"{audit['capacity_exclusions']} capacity exclusions, and {len(audit['unresolved_cells'])} unresolved cells "
+              f"in the requested {audit['required_cells']}-cell grid.", "",
+              "The unresolved cells are left blank and are not interpolated or plotted as zero. The committed inputs contain "
+              "validated report CSVs and audits but not the raw cell trees, so cross-server prompt hashes and the precise GPU "
+              "edition could not be independently rechecked here.", "", "## Sources", "", *source_lines, "",
+              "## Outputs", "", "- `runtime-cost-poster.pdf`", "- `runtime-cost-poster.png`",
+              "- `runtime-cost-poster.svg`", "- `figures/` with each panel in PDF, PNG, and SVG",
+              "- `coverage.csv`, `data.json`, and `evidence.json`", "", "## Rebuild", "", "```bash",
+              "python3 paper/poster/build.py --serving-reports \\",
+              *[f"  {root.relative_to(ROOT) if root.is_relative_to(ROOT) else root} \\" for root in roots],
+              "  --allow-missing --output paper/poster/blackwell-rtx-pro-6000", "```", ""]
+    (output / "README.md").write_text("\n".join(readme))
+    return poster
 
 
 METRICS = {
