@@ -10,6 +10,10 @@ results/*/
 results/*.json
 !results/rtxpro6000-exports/
 !results/rtxpro6000-exports/**
+# Exploratory concurrency-1 sweep: summary, per-cell raw.json/study.env and its
+# scripts. Small and self-contained; not part of the *-r1 study series.
+!results/rtxpro6000-c1-sweep/
+!results/rtxpro6000-c1-sweep/**
 # Keep each RTX PRO 6000 shard's serving report (index/runtime/capacity/audit) in
 # Git. The raw "*-70b" cell trees and the Nsight "profiles/" captures stay out.
 !results/cuda-context-study-rtxpro6000-*-r1/
