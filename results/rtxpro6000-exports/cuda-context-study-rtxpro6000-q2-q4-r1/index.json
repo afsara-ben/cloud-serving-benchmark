@@ -1,0 +1,43 @@
+{
+  "audit_status": "incomplete",
+  "capture_directory": "profiles/c8-p2048-retry1",
+  "files": [
+    {
+      "bytes": 32874,
+      "path": "Q4_K_M-serving-r1.json",
+      "sha256": "56bcfa6b2f943b6e0dc410fc6a0fb9425db4a6b14e4c1dcf18b804d9e6edf38d"
+    },
+    {
+      "bytes": 10012087,
+      "path": "Q4_K_M-profile-full-sections-p2048.json",
+      "sha256": "298dc9a1ba8f62859212351f244d7d620156e8711da09529d57892d01bba9912"
+    },
+    {
+      "bytes": 17673,
+      "path": "Q4_K_M-profile-scalar-roofline-p2048.json",
+      "sha256": "a246d3607a95961e14cfaab20a1f80523dc4aa22b38503053f7d9b177c442fbd"
+    },
+    {
+      "bytes": 32773,
+      "path": "Q2_K-serving-r1.json",
+      "sha256": "7ff6469d78c61f85f684f0730d222cad124431f41e6c7dae595211e9b0eecfb1"
+    },
+    {
+      "bytes": 9877536,
+      "path": "Q2_K-profile-full-sections-p2048.json",
+      "sha256": "5d6f928478e46e642b3eaf4f46c36dbf538c8dd7d273a1ae5d88ade6e4c6b5a2"
+    },
+    {
+      "bytes": 17690,
+      "path": "Q2_K-profile-scalar-roofline-p2048.json",
+      "sha256": "8b8dfee57e68cb8a930ffb54ca94e4246f6d86e8d93cc89724ad2d55ab9b0249"
+    }
+  ],
+  "formats": [
+    "Q4_K_M",
+    "Q2_K"
+  ],
+  "repetitions": 1,
+  "schema_version": 1,
+  "study": "cuda-context-study-rtxpro6000-q2-q4-r1"
+}

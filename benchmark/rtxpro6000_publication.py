@@ -354,6 +354,38 @@ def tensor_coordinates(launch):
     return rows
 
 
+def combined_cases(cases):
+    """Sum the per-configuration groups so one phase/GPU total covers the whole projection.
+
+    Decode samples a matmul and its stream-k fixup separately; a report figure wants
+    their combined cost, while the exported cases keep each group distinct.
+    """
+    structural = ("gpu", "n", "transformer_layers_on_gpu", "projected_gate_up_launches")
+    merged = {}
+    for case in cases:
+        key = (case["format"], case["phase"], case["gpu"])
+        if key not in merged:
+            merged[key] = dict(case) | {"kernel_configuration": [case["kernel_configuration"]],
+                                        "roles": collections.Counter(case["roles"])}
+            continue
+        total = merged[key]
+        for field, value in case.items():
+            if field in ("opcodes", "projected_opcodes"):
+                total[field] = {name: total[field][name] + value[name] for name in value}
+            elif field == "roles":
+                total[field] += collections.Counter(value)
+            elif field == "kernel_configuration":
+                total[field] = total[field] + [value]
+            elif isinstance(value, (int, float)) and field not in structural:
+                total[field] += value
+    return {key: value | {"roles": dict(value["roles"])} for key, value in merged.items()}
+
+
+def kernel_family(name):
+    """Kernel identity without template arguments, which encode the quantization type."""
+    return name.split("<", 1)[0].strip()
+
+
 def bottleneck_data(root, captures):
     root, captures = root.resolve(), captures.resolve()
     sys.path.insert(0, str(ROOT / "scripts"))
@@ -407,7 +439,7 @@ def bottleneck_data(root, captures):
         sources[str(raw_path)] = sha(raw_path)
     if devices is None or len(plan["source_cells"]) != 2:
         raise ValueError("Expected two serving source cells")
-    sampled_operator_points, extrapolation_rows = [], []
+    sampled_operator_points, extrapolation_rows, unplottable_groups = [], [], []
     for job in jobs:
         directory = captures / job["capture"]
         marker, metadata, summary = (read(directory / name) for name in ("study-capture.json", "metadata.json", "counter_summary.json"))
@@ -432,9 +464,10 @@ def bottleneck_data(root, captures):
         launches = summary["launches"]
         if len(launches) != 5:
             raise ValueError(f"Expected five matched gate/up launches: {directory}")
-        roles = collections.Counter()
-        configs = set()
-        values, opcodes, scalar_values = [], [], []
+        # Decode splits each projection into a matmul plus a stream-k fixup, so
+        # every launch configuration becomes its own sample group.
+        groups = collections.defaultdict(lambda: {"roles": collections.Counter(), "values": [],
+                                                  "opcodes": [], "scalars": [], "launches": [], "no_traffic": 0})
         for launch in launches:
             op = launch.get("operation", {})
             if (str(launch["device"]) != str(job["gpu"]) or
@@ -442,66 +475,88 @@ def bottleneck_data(root, captures):
                         "n": job["n"], "k": 8192, "type": job["tensor_type"], "operation_match": "nvtx_same_capture"}.items()) or
                     op.get("role") not in ("blk.*.ffn_gate.weight", "blk.*.ffn_up.weight")):
                 raise ValueError(f"Unmatched phase/geometry/role/GPU in {directory}")
-            roles[op["role"]] += 1
-            configs.add(tuple(str(launch.get(k, "")) for k in ("kernel", "grid", "block")))
+            group = groups[tuple(str(launch.get(k, "")) for k in ("kernel", "grid", "block"))]
+            group["roles"][op["role"]] += 1
             row = {key: number(launch["metrics"][name]) for key, name in METRICS.items()}
             row["duration_s"] = duration_s(launch)
-            values.append(row); opcodes.append(opcode_counts(launch))
-            scalar_values.append(operators.measured(launch))
-            for point in tensor_coordinates(launch):
+            group["values"].append(row); group["opcodes"].append(opcode_counts(launch))
+            try:
+                group["scalars"].append(operators.measured(launch))
+            except ValueError:
+                # A stream-k fixup can finish entirely in cache. Without DRAM traffic its
+                # arithmetic intensity is undefined, so it is counted but never plotted.
+                group["no_traffic"] += 1
+            group["launches"].append(launch)
+            try:
+                tensor_points = list(tensor_coordinates(launch))
+            except ValueError:
+                # The same cache-resident fixup: no DRAM traffic, so no roofline coordinate.
+                tensor_points = []
+            for point in tensor_points:
                 roofs.append({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
                               "launch_id": launch["id"], **point, "source": str(directory / "counter_summary.json")})
             for name, item in launch["metrics"].items():
                 metric_rows.append({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
                     "launch_id": launch["id"], "metric": name, "value": item.get("value"),
                     "unit": item.get("unit"), "available": item.get("available"), "source": str(directory)})
-        if len(configs) != 1:
-            raise ValueError("Gate/up capture mixes kernel launch configurations; do not pool these samples")
-        case = {"format": job["format"], "phase": job["phase"], "gpu": job["gpu"], "n": job["n"],
-                "samples": 5, "roles": dict(roles), "kernel_configuration": list(next(iter(configs))),
-                **{key: statistics.median(row[key] for row in values) for key in values[0]}}
-        # Median of the per-launch categories preserves the measured grouping.
-        categories = [{"FFMA": counts.get("FFMA", 0), "I2FP": counts.get("I2FP", 0),
-                       "Other": sum(v for k, v in counts.items() if k not in ("FFMA", "I2FP"))} for counts in opcodes]
-        case["opcodes"] = {key: statistics.median(row[key] for row in categories) for key in categories[0]}
-        # A Llama transformer layer invokes one gate and one up projection. The
-        # capture samples five matching launches; scale its per-launch median to
-        # one matched matrix batch across the transformer layers placed here.
-        projection_factor = 2 * layer_counts[job["gpu"]]
-        case.update(transformer_layers_on_gpu=layer_counts[job["gpu"]],
-                    projected_gate_up_launches=projection_factor,
-                    projected_instructions=case["instructions"] * projection_factor,
-                    projected_dram_reads=case["dram_reads"] * projection_factor,
-                    projected_dram_writes=case["dram_writes"] * projection_factor,
-                    projected_opcodes={key: value * projection_factor for key, value in case["opcodes"].items()})
-        extrapolation_rows.append({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
-            "sampled_launches": len(launches), "transformer_layers_on_gpu": layer_counts[job["gpu"]],
-            "gate_up_launches_for_one_matrix_batch": projection_factor,
-            "median_instructions_per_launch": case["instructions"],
-            "estimated_gate_up_instructions": case["projected_instructions"],
-            "median_dram_read_bytes_per_launch": case["dram_reads"],
-            "estimated_gate_up_dram_read_bytes": case["projected_dram_reads"],
-            "median_dram_write_bytes_per_launch": case["dram_writes"],
-            "estimated_gate_up_dram_write_bytes": case["projected_dram_writes"],
-            "scope": "one matrix batch across gate/up operations on this GPU"})
-        sampled_operator_points.append({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
-            "physical_gpu": devices[job["gpu"]]["index"], "operator": "sampled_gate_up",
-            "role": "blk.*.ffn_gate/up.weight", "type": job["tensor_type"], "m": "28672", "n": str(job["n"]),
-            "k": "8192", "batch_width": "", "fusion": "", "kernel": case["kernel_configuration"][0],
-            "grid": case["kernel_configuration"][1], "block": case["kernel_configuration"][2],
-            **{key: statistics.median(row[key] for row in scalar_values) for key in operators.COORDINATES},
-            "samples": len(scalar_values), "source": str(directory / "counter_summary.json")})
-        for launch, counts in zip(launches, opcodes):
-            instruction_rows.extend({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
-                                     "launch_id": launch["id"], "opcode": key, "instructions": value} for key, value in counts.items())
-        cases.append(case)
+        for configuration, group in groups.items():
+            values, opcodes = group["values"], group["opcodes"]
+            case = {"format": job["format"], "phase": job["phase"], "gpu": job["gpu"], "n": job["n"],
+                    "samples": len(values), "roles": dict(group["roles"]), "kernel_configuration": list(configuration),
+                    **{key: statistics.median(row[key] for row in values) for key in values[0]}}
+            # Median of the per-launch categories preserves the measured grouping.
+            categories = [{"FFMA": counts.get("FFMA", 0), "I2FP": counts.get("I2FP", 0),
+                           "Other": sum(v for k, v in counts.items() if k not in ("FFMA", "I2FP"))} for counts in opcodes]
+            case["opcodes"] = {key: statistics.median(row[key] for row in categories) for key in categories[0]}
+            # A Llama transformer layer invokes one gate and one up projection. The
+            # capture samples five matching launches; scale its per-launch median to
+            # one matched matrix batch across the transformer layers placed here.
+            projection_factor = 2 * layer_counts[job["gpu"]]
+            case.update(transformer_layers_on_gpu=layer_counts[job["gpu"]],
+                        projected_gate_up_launches=projection_factor,
+                        projected_instructions=case["instructions"] * projection_factor,
+                        projected_dram_reads=case["dram_reads"] * projection_factor,
+                        projected_dram_writes=case["dram_writes"] * projection_factor,
+                        projected_opcodes={key: value * projection_factor for key, value in case["opcodes"].items()})
+            extrapolation_rows.append({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
+                "sampled_launches": len(values), "transformer_layers_on_gpu": layer_counts[job["gpu"]],
+                "gate_up_launches_for_one_matrix_batch": projection_factor,
+                "median_instructions_per_launch": case["instructions"],
+                "estimated_gate_up_instructions": case["projected_instructions"],
+                "median_dram_read_bytes_per_launch": case["dram_reads"],
+                "estimated_gate_up_dram_read_bytes": case["projected_dram_reads"],
+                "median_dram_write_bytes_per_launch": case["dram_writes"],
+                "estimated_gate_up_dram_write_bytes": case["projected_dram_writes"],
+                "scope": "one matrix batch across gate/up operations on this GPU"})
+            case["roofline_samples"] = len(group["scalars"])
+            case["launches_without_dram_traffic"] = group["no_traffic"]
+            if group["scalars"]:
+                sampled_operator_points.append({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
+                    "physical_gpu": devices[job["gpu"]]["index"], "operator": "sampled_gate_up",
+                    "role": "blk.*.ffn_gate/up.weight", "type": job["tensor_type"], "m": "28672", "n": str(job["n"]),
+                    "k": "8192", "batch_width": "", "fusion": "", "kernel": configuration[0],
+                    "grid": configuration[1], "block": configuration[2],
+                    **{key: statistics.median(row[key] for row in group["scalars"]) for key in operators.COORDINATES},
+                    "samples": len(group["scalars"]), "source": str(directory / "counter_summary.json")})
+            else:
+                unplottable_groups.append(case["kernel_configuration"])
+            for launch, counts in zip(group["launches"], opcodes):
+                instruction_rows.extend({"format": job["format"], "phase": job["phase"], "gpu": job["gpu"],
+                                         "launch_id": launch["id"], "opcode": key, "instructions": value} for key, value in counts.items())
+            cases.append(case)
         for filename in ("study-capture.json", "metadata.json", "counter_summary.json"):
             path = directory / filename
             sources[str(path)] = sha(path)
     for phase in ("prefill", "decode"):
         for gpu in (0, 1):
-            pair = [c for c in cases if (c["phase"], c["gpu"]) == (phase, gpu)]
-            if pair[0]["roles"] != pair[1]["roles"]:
+            selected = [c for c in cases if (c["phase"], c["gpu"]) == (phase, gpu)]
+            by_format = collections.defaultdict(dict)
+            for entry in selected:
+                by_format[entry["format"]][kernel_family(entry["kernel_configuration"][0])] = entry["roles"]
+            grouped = list(by_format.values())
+            if len(grouped) != 2 or grouped[0].keys() != grouped[1].keys():
+                raise ValueError("Compared formats sampled different gate/up kernel configurations")
+            if any(grouped[0][family] != grouped[1][family] for family in grouped[0]):
                 raise ValueError("Compared formats have different gate/up launch proportions")
     if minimal:
         roof = rated_roof(devices[0]["name"])
@@ -515,6 +570,7 @@ def bottleneck_data(root, captures):
             "method": "Scalar FP32 coordinates reused from the eight full-section gate/up captures"}
         operator_audit = {"status": "complete", "captures": 8, "captured_launches": 40,
             "configuration_groups": len(points),
+            "groups_without_dram_traffic_not_plotted": len(unplottable_groups),
             "zero_fp32_groups_not_plotted": sum(point["fp32_flops"] == 0 for point in points),
             "scope": "sampled gate/up only; no complete operator inventory"}
     else:
@@ -547,7 +603,7 @@ def bottleneck_figures(output, data):
     plt = plotting()
     import numpy as np
     from matplotlib.lines import Line2D
-    cases = {(c["format"], c["phase"], c["gpu"]): c for c in data["cases"]}
+    cases = combined_cases(data["cases"])
     reference, comparison = data["formats"]
     estimated = data["analysis_scope"] == "sampled_gate_up_extrapolation"
     for phase in ("prefill", "decode"):
@@ -660,7 +716,7 @@ def report_document(output, data):
     styles = getSampleStyleSheet()
     styles["BodyText"].fontSize = 9
     styles["BodyText"].leading = 12
-    cases = {(c["format"], c["phase"], c["gpu"]): c for c in data["cases"]}
+    cases = combined_cases(data["cases"])
     reference, comparison = data["formats"]
     estimated = data["analysis_scope"] == "sampled_gate_up_extrapolation"
     elements, markdown = [], []
