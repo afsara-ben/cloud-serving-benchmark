@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import datetime as dt
 import hashlib
 import json
 from pathlib import Path
@@ -15,6 +16,11 @@ import report_context_study as report
 def put(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value))
+
+
+def smi_stamp(unix):
+    """Format an instant the way nvidia-smi does: local wall clock, no zone."""
+    return dt.datetime.fromtimestamp(unix).strftime("%Y/%m/%d %H:%M:%S.%f")[:-3]
 
 
 def fixture(root, prompt=2048, quant="Q4_K_M", family="1b"):
@@ -71,9 +77,9 @@ def fixture(root, prompt=2048, quant="Q4_K_M", family="1b"):
         put(target / "resources.json", resources)
         (target / "telemetry.csv").write_text(
             "timestamp,index,memory.used [MiB],power.draw [W],temperature.gpu,clocks.current.sm [MHz],clocks.current.memory [MHz],clocks_event_reasons.sw_thermal_slowdown,clocks_event_reasons.hw_thermal_slowdown\n"
-            "1970/01/01 00:00:01.100,0,3072,250,65,1800,8000,Not Active,Not Active\n"
-            "1970/01/01 00:00:01.100,1,4096,251,66,1800,8000,Not Active,Not Active\n"
-            "1970/01/01 00:00:04.100,0,45000,250,65,1800,8000,Active,Not Active\n")
+            f"{smi_stamp(1.1)},0,3072,250,65,1800,8000,Not Active,Not Active\n"
+            f"{smi_stamp(1.1)},1,4096,251,66,1800,8000,Not Active,Not Active\n"
+            f"{smi_stamp(4.1)},0,45000,250,65,1800,8000,Active,Not Active\n")
         log = []
         for burst in range(count // concurrency):
             log += [f"slot launch: id {i} | task {burst * concurrency + i} | processing task, is_child = 0\n" for i in range(concurrency)]

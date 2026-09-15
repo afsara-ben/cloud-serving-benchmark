@@ -231,7 +231,9 @@ def telemetry_samples(path, raw):
             for original in csv.DictReader(stream, skipinitialspace=True):
                 row = {key.strip(): value.strip() for key, value in original.items() if key and value is not None}
                 try:
-                    timestamp = dt.datetime.strptime(row.get("timestamp", ""), "%Y/%m/%d %H:%M:%S.%f").replace(tzinfo=dt.timezone.utc).timestamp()
+                    # nvidia-smi writes local wall-clock time with no zone, so the naive
+                    # timestamp is read back in the sampling host's zone, not as UTC.
+                    timestamp = dt.datetime.strptime(row.get("timestamp", ""), "%Y/%m/%d %H:%M:%S.%f").timestamp()
                 except ValueError:
                     continue
                 if start <= timestamp <= end:
