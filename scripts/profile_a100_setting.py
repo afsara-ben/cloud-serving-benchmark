@@ -35,6 +35,20 @@ from report_serving import CONCURRENCIES, PROMPTS
 from run_a100_serving import check_devices
 from cuda_hardware import HARDWARE, architecture, matches
 
+# ncu only accepts the Blackwell spelling on RTX PRO 6000; profile_cuda records
+# the results back under the canonical Ampere names.
+BLACKWELL_METRIC_NAMES = {
+    "dram__bytes_read.sum": "dram__bytes_op_read.sum",
+    "dram__bytes_write.sum": "dram__bytes_op_write.sum",
+}
+
+
+def device_metrics(metrics, hardware):
+    if hardware != "rtxpro6000":
+        return metrics
+    return ",".join(BLACKWELL_METRIC_NAMES.get(name, name) for name in metrics.split(","))
+
+
 SCALAR_ROOFLINE_METRICS = (
     "gpu__time_duration.sum", "dram__bytes_read.sum", "dram__bytes_write.sum",
     "sass__thread_inst_executed_true_per_opcode",
@@ -106,6 +120,7 @@ def capture_settings(args, gpu_count):
         if getattr(args, "hardware", "a100") == "rtxpro6000":
             collection["metrics"] += (",l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum,"
                                       "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum")
+    collection["metrics"] = device_metrics(collection["metrics"], getattr(args, "hardware", "a100"))
     nvtx = f"regex:csb_batch:phase={args.phase}:.*/"
     if getattr(args, "operation_regex", None):
         nvtx = f"regex:csb_batch:phase={args.phase}:.*/*/{args.operation_regex}"

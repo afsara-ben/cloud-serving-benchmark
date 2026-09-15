@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import report_serving as serving
 import report_context_study as context
-from test_report_context_study import fixture, put
+from test_report_context_study import fixture, put, smi_stamp
 
 
 class ServingReportTests(unittest.TestCase):
@@ -54,8 +54,8 @@ class ServingReportTests(unittest.TestCase):
             put(path, resources)
         (folder / "r1/telemetry.csv").write_text(
             "timestamp,index,memory.used [MiB]\n" + "".join(
-                f"1970/01/01 00:00:01.100,{gpu},{3072 * (index + 1)}\n" for index, gpu in enumerate(devices))
-            + f"1970/01/01 00:00:04.100,{devices[0]},70000\n")
+                f"{smi_stamp(1.1)},{gpu},{3072 * (index + 1)}\n" for index, gpu in enumerate(devices))
+            + f"{smi_stamp(4.1)},{devices[0]},70000\n")
         return folder
 
     def test_single_physical_gpu_index_is_reported_without_inventing_second_gpu(self):
@@ -108,7 +108,7 @@ class ServingReportTests(unittest.TestCase):
 
     def test_missing_measured_memory_samples_are_rejected(self):
         folder = self.make_cell(["0"])
-        (folder / "r1/telemetry.csv").write_text("timestamp,index,memory.used [MiB]\n1970/01/01 00:00:04.100,0,70000\n")
+        (folder / "r1/telemetry.csv").write_text(f"timestamp,index,memory.used [MiB]\n{smi_stamp(4.1)},0,70000\n")
         serving.build_report(self.root, plots=False)
         self.assertEqual(context.read_csv(self.root / "serving-report/runtime.csv"), [])
 

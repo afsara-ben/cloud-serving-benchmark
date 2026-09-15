@@ -123,6 +123,19 @@ def a100_section_collection(rooflines=()):
             "sections": list(A100_SECTIONS) + list(dict.fromkeys(ROOFLINE_SECTIONS[name] for name in rooflines))}
 
 
+# Blackwell renamed the DRAM byte counters to dram__bytes_op_read/write. Record
+# and validate them under the Ampere spelling so one canonical key serves every
+# architecture and results stay comparable across GPUs.
+CANONICAL_METRICS = {
+    "dram__bytes_op_read.sum": "dram__bytes_read.sum",
+    "dram__bytes_op_write.sum": "dram__bytes_write.sum",
+}
+
+
+def canonical_metric(name: str) -> str:
+    return CANONICAL_METRICS.get(name, name)
+
+
 def combine_metric_groups(names: list[str]) -> dict:
     return {"metrics": ",".join(dict.fromkeys(metric for name in names for metric in METRIC_GROUPS[name]["metrics"].split(","))),
             "sections": list(dict.fromkeys(section for name in names for section in METRIC_GROUPS[name]["sections"]))}
@@ -141,7 +154,7 @@ def validate_counter_capture(summary: dict, metrics: str | list[str], sections: 
     exact selected operation signatures and documented sample availability.
     """
     requested = metrics.split(",") if isinstance(metrics, str) else metrics
-    requested = [name for name in requested if ":" not in name]
+    requested = [canonical_metric(name) for name in requested if ":" not in name]
     missing, section_missing = set(), {name: set() for name in sections}
     counts = collections.Counter(str(launch["device"]) for launch in summary.get("launches", []))
     invalid_nvtx = []
@@ -371,6 +384,7 @@ def summarize_ncu(csv_path: pathlib.Path, output: pathlib.Path) -> dict:
 
     def add_metric(launch: dict, name: str, unit: str, raw: str,
                    section: str = "", instance: str = "") -> None:
+        name = canonical_metric(name)
         aggregate_raw = raw
         # --print-metric-instances details exports wide cells as
         # "aggregate (correlation ID: value; correlation ID: value)".
