@@ -3,6 +3,7 @@ models/*.gguf
 models/.cache/
 models/mi300x/
 models/*.gguf.converting
+models/*-serving-manifest-*.json
 logs/*.log
 .run/
 results/*/
