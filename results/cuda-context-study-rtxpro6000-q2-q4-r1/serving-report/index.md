@@ -28,11 +28,3 @@ One measured run per setting: C discarded warmup requests and 2C measured reques
 | 70b | Q4_K_M | 16 | 4096 | 4481.90 | 24418.66 | 100.75 | 103.51 | 144.20 | 32.68 | 31.99 |
 | 70b | Q4_K_M | 16 | 8192 | 6403.05 | 49627.19 | 162.74 | 166.19 | 89.67 | 42.94 | 41.75 |
 | 70b | Q4_K_M | 16 | 16384 | 10777.09 | 104792.72 | 290.77 | 298.05 | 49.98 | 63.48 | 61.28 |
-
-![70b-throughput](plots/70b-throughput.png)
-
-![70b-ttft](plots/70b-ttft.png)
-
-![70b-tpot](plots/70b-tpot.png)
-
-![70b-memory](plots/70b-memory.png)

@@ -40,12 +40,14 @@ def main():
     parser.add_argument("--study-root", type=Path, required=True)
     parser.add_argument("--captures", type=Path, required=True)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--allow-missing", action="store_true",
+                        help="Export an unresolved grid as a snapshot; the combined poster still needs all 60 cells")
     args = parser.parse_args()
     study, captures = args.study_root.resolve(), args.captures.resolve()
     output = (args.output or ROOT / "results/rtxpro6000-exports" / study.name).resolve()
     output.mkdir(parents=True, exist_ok=True)
 
-    serving = publication.serving_data(study)
+    serving = publication.serving_data(study, allow_missing=args.allow_missing)
     profile = publication.bottleneck_data(study, captures)
     if set(profile["formats"]) != set(serving["audit"]["scope"]["model_formats"]["70b"]):
         raise ValueError("Profile and serving shard formats differ")
@@ -73,7 +75,8 @@ def main():
         files.extend((serving_path, full_path, scalar_path))
     capture_name = str(captures.relative_to(study)) if captures.is_relative_to(study) else str(captures)
     index = {"schema_version": 1, "study": study.name, "capture_directory": capture_name,
-             "formats": profile["formats"], "repetitions": 1, "files": []}
+             "formats": profile["formats"], "repetitions": 1,
+             "audit_status": serving["audit"]["status"], "files": []}
     for path in files:
         index["files"].append({"path": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                                "bytes": path.stat().st_size})

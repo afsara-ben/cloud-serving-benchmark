@@ -167,7 +167,7 @@ class RTXWorkflowTests(unittest.TestCase):
             captures.mkdir(parents=True)
             serving_data = {"rows": [{"format": q, "source": str(root / q)} for q in ("Q4_K_M", "Q2_K")],
                 "coverage": [{"format": q} for q in ("Q4_K_M", "Q2_K")],
-                "audit": {"scope": {"model_formats": {"70b": ["Q4_K_M", "Q2_K"]}}},
+                "audit": {"status": "complete", "scope": {"model_formats": {"70b": ["Q4_K_M", "Q2_K"]}}},
                 "devices": [{"name": GPU}], "sources": {str(root / "manifest.json"): "abc"}}
             profile_data = {"formats": ["Q4_K_M", "Q2_K"], "prompt_tokens": 2048,
                 "analysis_scope": "sampled_gate_up_extrapolation", "layer_counts": [41, 39],
@@ -180,6 +180,7 @@ class RTXWorkflowTests(unittest.TestCase):
                 exporter.main()
             index = publication.read(output / "index.json")
             self.assertEqual(len(index["files"]), 6)
+            self.assertEqual(index["audit_status"], "complete")
             self.assertTrue((output / "Q2_K-profile-full-sections-p2048.json").is_file())
             exported = publication.read(output / "Q4_K_M-serving-r1.json")
             self.assertIn("study/Q4_K_M", json.dumps(exported))
