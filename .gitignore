@@ -9,6 +9,12 @@ results/*/
 results/*.json
 !results/rtxpro6000-exports/
 !results/rtxpro6000-exports/**
+# Keep each RTX PRO 6000 shard's serving report (index/runtime/capacity/audit) in
+# Git. The raw "*-70b" cell trees and the Nsight "profiles/" captures stay out.
+!results/cuda-context-study-rtxpro6000-*-r1/
+results/cuda-context-study-rtxpro6000-*-r1/*
+!results/cuda-context-study-rtxpro6000-*-r1/serving-report/
+!results/cuda-context-study-rtxpro6000-*-r1/serving-report/**
 __pycache__/
 *.pyc
 .venv-a100-serving/

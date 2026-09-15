@@ -17,8 +17,8 @@ set +a
 if [[ -d /opt/rocm/bin ]]; then
   export PATH="/opt/rocm/bin:$PATH"
 fi
-if [[ -d /usr/local/cuda/bin ]]; then
-  export PATH="/usr/local/cuda/bin:$PATH"
+if [[ -d "${CUDA_HOME:-/usr/local/cuda}/bin" ]]; then
+  export PATH="${CUDA_HOME:-/usr/local/cuda}/bin:$PATH"
 fi
 
 die() {
