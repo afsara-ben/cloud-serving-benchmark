@@ -401,6 +401,39 @@ Each report directory also contains five standalone figures in PDF/PNG/SVG,
 Markdown, metrics/roofline CSVs, and JSON evidence with source hashes. The PDF
 describes the actual measured changes without assuming Q2 is slower than Q4.
 
+### Only Q2_K and Q4_K_M are a comparable pair
+
+`bottleneck_data` requires the two compared formats to sample the same gate/up
+kernel families in **both** phases, and rejects any other pairing with
+`Compared formats sampled different gate/up kernel configurations`. Measured
+2K/C8 captures on two RTX PRO 6000 Blackwell Server Edition GPUs
+(September 15, 2026) give:
+
+| Format | Prefill | Decode |
+|---|---|---|
+| Q2_K | `mul_mat_q` | `mul_mat_q` + `mul_mat_q_stream_k_fixup` |
+| Q4_K_M | `mul_mat_q` | `mul_mat_q` + `mul_mat_q_stream_k_fixup` |
+| Q8_0 | `mul_mat_q` | `mul_mat_vec_q` |
+| IQ1_M | `cutlass::Kernel2` | `mul_mat_vec_q` |
+
+Of the six possible pairs only **Q2_K + Q4_K_M** matches in both phases, so the
+`Q2_K vs Q4_K_M` scope above is the only bottleneck comparison these four
+formats support. Each remaining format is isolated by a different phase: IQ1_M
+alone dispatches CUTLASS for prefill, and Q8_0 is the only `mul_mat_q` prefill
+format that decodes through `mul_mat_vec_q` instead of the stream-k matmul.
+Re-pairing the two servers therefore cannot yield a second comparable pair; it
+is not a sharding choice but a dispatch property of the quantization formats.
+
+Consequences for the two-server split:
+
+- The `q2-q4` shard is the Runtime Bottlenecks report. Build it on that server.
+- The `iq1-q8` shard contributes serving cells and per-format captures only. Its
+  `run` and `export` stages fail at the pairing check, so it produces no
+  `IQ1_M-Q8_0-runtime-bottlenecks-*.pdf`. An export predating this check may
+  still contain one; that PDF is not reproducible and should be discarded.
+- IQ1_M and Q8_0 do match in decode (`mul_mat_vec_q`). A decode-only comparison
+  would be valid but is not implemented; the check is all-or-nothing per pair.
+
 ## 4. Rebuild figures or resume
 
 These commands only read saved measurements and regenerate reports:
