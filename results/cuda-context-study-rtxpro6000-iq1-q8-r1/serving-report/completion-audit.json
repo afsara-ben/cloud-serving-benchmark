@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_utc": "2026-09-15T01:27:40.436936+00:00",
+  "generated_utc": "2026-09-15T02:19:31.938971+00:00",
   "status": "incomplete",
   "scope": {
     "schema_version": 1,
@@ -191,15 +191,6 @@
       "validation_errors": ""
     }
   ],
-  "plots": [
-    "plots/70b-throughput.png",
-    "plots/70b-throughput.svg",
-    "plots/70b-ttft.png",
-    "plots/70b-ttft.svg",
-    "plots/70b-tpot.png",
-    "plots/70b-tpot.svg",
-    "plots/70b-memory.png",
-    "plots/70b-memory.svg"
-  ],
+  "plots": [],
   "completion_definition": "All 30 serving cells measured or capacity-excluded; profiling is outside this scope."
 }
